@@ -1,8 +1,7 @@
 {
   "name": "@jscontract/compiler",
   "version": "1.0.0",
-  "description": "Compile TypeScript into JavaScript with contracts.",
-  "main": "dist/compiler.js",
+  "description": "A tool for experimenting with contracts in TypeScript.",
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
@@ -54,7 +53,8 @@
       "^.+\\.(t|j)sx?$": "@swc/jest"
     },
     "testPathIgnorePatterns": [
-      "<rootDir>/dist"
+      "<rootDir>/dist",
+      "<rootDir>/__contract__"
     ]
   }
 }
