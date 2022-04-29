@@ -659,7 +659,7 @@ const getContractName = (name: string): string =>
 export const ORIGINAL_MODULE_FILE = "./__ORIGINAL_UNTYPED_MODULE__.js";
 
 const requireContractLibrary = (): t.Statement[] => [
-  template.statement(`var CT = require('@jscontract/contract')`)({
+  template.statement(`var CT = require('./__REPLACE_ME__.js')`)({
     CT: t.identifier("CT"),
   }),
   template.statement(`var originalModule = require(%%replacementName%%)`)({
@@ -1061,18 +1061,3 @@ const compileContracts = (options: CompilerOptions = DEFAULT_OPTIONS): string =>
 
 export default compileContracts;
 // }}}
-
-if (require.main === module) {
-  if (process.argv.slice(2).length === 0) {
-    fs.writeFileSync("./__COMPILATION_RESULT__.js", compileContracts());
-  } else {
-    const flowArg = process.argv[process.argv.length - 1];
-    fs.writeFileSync(
-      "./__COMPILATION_RESULT__.js",
-      compileContracts({
-        fileName: flowArg,
-        language: "flow",
-      })
-    );
-  }
-}

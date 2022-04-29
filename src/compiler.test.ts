@@ -164,7 +164,7 @@ describe("Our compiler", () => {
   test("Succeeds with some constants", () => {
     gotoFixture("constants");
     const code = compileContracts();
-    expect(code).toMatch(`var CT = require("@jscontract/contract")`);
+    expect(code).toMatch(`var CT = require("./__REPLACE_ME__.js")`);
     expect(code).toMatch(
       `var originalModule = require("./__ORIGINAL_UNTYPED_MODULE__.js")`
     );

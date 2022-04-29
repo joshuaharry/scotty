@@ -1,7 +1,6 @@
 {
-  "extends": "@tsconfig/node12",
-  "include": ["compiler.ts"],
-  "exclude": ["node_modules"],
+  "extends": "@tsconfig/node16",
+  "include": ["src/**/*"],
   "compilerOptions": {
     "outDir": "dist",
     "esModuleInterop": true,
