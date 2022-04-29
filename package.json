@@ -4,6 +4,7 @@
   "description": "A tool for experimenting with contracts in TypeScript.",
   "scripts": {
     "build": "tsc",
+    "build:all": "sh ./build/build.sh",
     "build:watch": "tsc --watch",
     "test": "jest",
     "test:all": "sh ./build/test.sh",
@@ -62,7 +63,7 @@
     },
     "testPathIgnorePatterns": [
       "<rootDir>/dist",
-      "<rootDir>/__contract__"
+      "<rootDir>/__contracts__"
     ]
   }
 }

@@ -18,7 +18,7 @@ usage: scotty [command]
 
 command:
   help                Display this help message and exit.
-  validate            Validate that scotty can function.
+  validate            Validate that scotty can function correctly on the current machine.
   identity-mode       Compile types to contracts in identity mode.
   proxy-mode          Compile types to contracts in proxy mode.
   full-mode           Compile types to contracts in full mode.
@@ -84,7 +84,6 @@ const replaceImport = (code: string, mode: Mode): string => {
 };
 
 const compileAndSwap = (mode: Mode) => {
-  validate();
   const mainPath = require.resolve(".");
   const packageName = path.dirname(ORIGINAL_DIRECTORY);
   const mainDirectory = path.dirname(mainPath);
@@ -93,6 +92,10 @@ const compileAndSwap = (mode: Mode) => {
     process.exit(1);
   }
   const typePath = path.join(DT_PATH, "types", packageName, "index.d.ts");
+  if (!existsSync(typePath)) {
+    console.error(`Fatal error: Could not types for ${packageName}`);
+    process.exit(1);
+  }
   copySync(typePath, mainDirectory);
   const code = replaceImport(compileContracts(), mode);
   const __ORIGINAL_UNTYPED_CODE__ = path.join(
@@ -124,7 +127,7 @@ const parseArgv = (argv: string[]) => {
       return compileAndSwap(el);
     }
     default: {
-      console.error("Could not recognize command.");
+      console.error("Fatal error: Could not recognize command.\n");
       return help(1);
     }
   }
