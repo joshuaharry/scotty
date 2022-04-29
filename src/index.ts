@@ -84,8 +84,9 @@ const replaceImport = (code: string, mode: Mode): string => {
 };
 
 const compileAndSwap = (mode: Mode) => {
-  const mainPath = require.resolve(".");
-  const packageName = path.dirname(ORIGINAL_DIRECTORY);
+  const mainPath = require.resolve(process.cwd());
+  const seps = ORIGINAL_DIRECTORY.split(path.sep)
+  const packageName = seps[seps.length - 1];
   const mainDirectory = path.dirname(mainPath);
   if (!existsSync(mainPath)) {
     console.error(`Fatal error: Could not find file ${mainPath}`);
@@ -96,14 +97,14 @@ const compileAndSwap = (mode: Mode) => {
     console.error(`Fatal error: Could not types for ${packageName}`);
     process.exit(1);
   }
-  copySync(typePath, mainDirectory);
+  copySync(typePath, path.join(mainDirectory, 'index.d.ts'));
   const code = replaceImport(compileContracts(), mode);
-  const __ORIGINAL_UNTYPED_CODE__ = path.join(
+  const __ORIGINAL_UNTYPED_MODULE__ = path.join(
     mainDirectory,
-    "__ORIGINAL_UNTYPED_CODE__.js"
+    "__ORIGINAL_UNTYPED_MODULE__.js"
   );
-  if (!existsSync(__ORIGINAL_UNTYPED_CODE__)) {
-    moveSync(mainPath, __ORIGINAL_UNTYPED_CODE__);
+  if (!existsSync(__ORIGINAL_UNTYPED_MODULE__)) {
+    moveSync(mainPath, __ORIGINAL_UNTYPED_MODULE__);
   }
   writeFileSync(mainPath, code);
   copySync(CONTRACTS_PATH, mainDirectory, { recursive: true });
@@ -123,7 +124,6 @@ const parseArgv = (argv: string[]) => {
     case "identity-mode": 
     case "proxy-mode": 
     case "full-mode": {
-      validate();
       return compileAndSwap(el);
     }
     default: {
