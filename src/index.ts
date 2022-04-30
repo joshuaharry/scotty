@@ -97,7 +97,7 @@ const compileAndSwap = (mode: Mode) => {
     console.error(`Fatal error: Could not types for ${packageName}`);
     process.exit(1);
   }
-  copySync(typePath, path.join(mainDirectory, 'index.d.ts'));
+  copySync(typePath, path.join(process.cwd(), 'index.d.ts'));
   const code = replaceImport(compileContracts(), mode);
   const __ORIGINAL_UNTYPED_MODULE__ = path.join(
     mainDirectory,
