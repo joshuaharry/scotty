@@ -34,6 +34,8 @@ cd ~
 git clone https://github.com/eugeneware/ffprobe
 cd ~/ffprobe
 scotty identity-mode
+npm install
+npm test
 ```
 
-You could then use the commands above to run `scotty`.
+You could then `cd` into `~/ffprobe` and experiment with the code in there.
