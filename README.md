@@ -25,3 +25,15 @@ command:
   identity-mode       Compile types to contracts in identity mode.
   proxy-mode          Compile types to contracts in proxy mode.
   full-mode           Compile types to contracts in full mode.
+
+You need to run `scotty` inside an existing JavaScript package. If operating manually,
+the workflow would look something like:
+
+```sh
+cd ~
+git clone https://github.com/eugeneware/ffprobe
+cd ~/ffprobe
+scotty identity-mode
+```
+
+You could then use the commands above to run `scotty`.
