@@ -39,3 +39,9 @@ npm test
 ```
 
 You could then `cd` into `~/ffprobe` and experiment with the code in there.
+
+
+## Examples
+
+The direction `examples` contains some examples that were used when
+developping scotty.

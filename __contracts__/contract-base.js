@@ -1,15 +1,26 @@
 /*=====================================================================*/
-/*    .../jscontract/jscontract/workspaces/contract/contract.mjs       */
+/*    /misc/serrano-misc/scotty/__contracts__/contract-base.js         */
 /*    -------------------------------------------------------------    */
 /*    Author      :  manuel serrano                                    */
 /*    Creation    :  Tue Feb 18 17:19:39 2020                          */
-/*    Last change :  Wed Jan 19 17:38:31 2022 (serrano)                */
+/*    Last change :  Thu Jun 16 13:14:40 2022 (serrano)                */
 /*    Copyright   :  2020-22 manuel serrano                            */
 /*    -------------------------------------------------------------    */
 /*    Basic contract implementation                                    */
 /*=====================================================================*/
 "use strict";
 "use hopscript";
+
+/*---------------------------------------------------------------------*/
+/*    toStr ...                                                        */
+/*---------------------------------------------------------------------*/
+function toStr(o) {
+   if (typeof o === "object") {
+      return o.constructor.name;
+   } else {
+      return o.toString();
+   }
+}
 
 /*---------------------------------------------------------------------*/
 /*    ContractError                                                    */
@@ -265,7 +276,7 @@ function CTFunction(self, domain, range) {
           return signal_contract_violation(
             value,
             blame_object,
-            "Not a function `" + value + "': "
+            "CTFunction: Not a function `" + toStr(value) + "': "
           );
         }
       });
@@ -340,7 +351,7 @@ function CTFunctionOpt(self, domain, range) {
           if (firstOrder(value)) {
             return new Proxy(value, handler);
           } else {
-            throw new ContractError("Not a function `" + value + "': " + info);
+              throw new ContractError("CTFunctionOpt: Not a function `" + toStr(value) + "': " + info);
           }
         });
       }
@@ -461,7 +472,7 @@ function CTFunctionD(domain, range, info_indy) {
           return signal_contract_violation(
             value,
             blame_object,
-            "Not a function `" + value
+             "CTFunctionD: Not a function `" + toStr(value)
           );
         }
       });
@@ -931,7 +942,7 @@ function CTObject(ctfields) {
           return signal_contract_violation(
             value,
             blame_object,
-            `Object mismatch, expecting "${toString(fields)}", got "${toString(
+            `XXObject mismatch, expecting "${toString(fields)}", got "${toString(
               value
             )}"`
           );

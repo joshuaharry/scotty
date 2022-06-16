@@ -11,6 +11,12 @@ import prettier from "prettier";
 const readTypesFromFile = (name: string): string =>
   fs.readFileSync(path.join(process.cwd(), name), "utf-8");
 
+let classDeclarations = new Set();
+
+function classContractTypeName(name: string): string {
+   return name + "$Class";
+}
+
 interface CompilerInput {
   code: string;
   language: ParserPlugin;
@@ -136,6 +142,11 @@ const markExports = (l: ContractToken[]): ContractToken[] => {
 };
 // }}}
 
+// same as TSFunctionType but with a self type
+interface TSMethodType extends t.TSFunctionType {
+    self: t.TSType | null;
+}
+
 // Map the AST into Contract Tokens {{{
 interface FunctionParameter {
   type: t.TSType;
@@ -146,6 +157,7 @@ interface FunctionParameter {
 interface FunctionSyntax {
   domain: FunctionParameter[];
   range: t.TSType;
+  self: t.TSType | null;
 }
 
 interface ObjectChunk {
@@ -231,9 +243,17 @@ type InterfaceChild =
   | t.TSConstructSignatureDeclaration
   | t.TSMethodSignature;
 
+type ClassChild =
+  | t.TSIndexSignature
+  | t.ClassMethod
+  | t.ClassPrivateMethod
+  | t.ClassPrivateProperty
+  | t.ClassProperty
+  | t.TSDeclareMethod;
+
 const accumulateType = (
   acc: ObjectRecord,
-  el: t.TSPropertySignature | t.TSMethodSignature,
+  el: t.TSPropertySignature | t.TSMethodSignature | t.ClassProperty | t.ClassMethod,
   type?: t.TSType
 ): ObjectRecord => {
   if (!type || el?.key?.type !== "Identifier") return acc;
@@ -256,27 +276,165 @@ const coerceMethodSignature = (el: t.TSMethodSignature): t.TSFunctionType => ({
   end: null,
 });
 
+type ParamChild = t.Identifier 
+   | t.RestElement;
+
+let G: number = 0;
+
+function gensym(base = "g"): string {
+   return base + G++;
+}
+
+function coerceParam(el: ParameterChild): t.Identifier {
+
+  function genIdentifier() {
+    return <t.Identifier>{
+      type: "Identifier",
+      leadingComments: null,
+      innerComments: null,
+      trailingComments: null,
+      loc: null,
+      start: null,
+      end: null,
+      name: gensym()
+    }
+  }
+
+  function coerceAssignmentPattern(el: t.AssignmentPattern): t.Identifier {
+    return genIdentifier();
+  }
+
+  switch (el.type) {
+    case "Identifier":
+      return el;
+
+    case "RestElement":
+      return genIdentifier();
+
+    case "TSParameterProperty":
+       if (el.parameter.type === "AssignmentPattern") {
+         return coerceAssignmentPattern(el.parameter);
+       } else {
+         if (el.parameter.type === "Identifier") {
+            return el.parameter;
+         } else {
+            return coerceAssignmentPattern(el.parameter);
+         }
+       }
+
+    case "AssignmentPattern":
+      return coerceAssignmentPattern(el);
+
+    default: 
+      return genIdentifier();
+  }
+}
+
+function typeReference(name: string): t.TSType {
+   const entityName = <t.Identifier>{
+      type: "Identifier",
+      leadingComments: null,
+      innerComments: null,
+      trailingComments: null,
+      loc: null,
+      start: null,
+      end: null,
+      name: name
+    };
+   return {
+     type: "TSTypeReference",
+     typeName: entityName,
+     leadingComments: null,
+     innerComments: null,
+     trailingComments: null,
+     loc: null,
+     start: null,
+     end: null
+  };
+}
+
+function ctorTypeAnnotation(el: any): t.TSTypeAnnotation {
+   if (el === null) {
+      return {
+     	 type: "TSTypeAnnotation",
+     	 typeAnnotation: typeReference("object"),
+     	 leadingComments: null,
+     	 innerComments: null,
+     	 trailingComments: null,
+     	 loc: null,
+     	 start: null,
+     	 end: null
+      }
+   } else {
+      return {
+     	 type: "TSTypeAnnotation",
+     	 typeAnnotation: typeReference(classContractTypeName(el.id.name)),
+     	 leadingComments: null,
+     	 innerComments: null,
+     	 trailingComments: null,
+     	 loc: null,
+     	 start: null,
+     	 end: null
+      }
+   }
+}
+
+const coerceClassMethod = (el: t.ClassMethod, parent: any): TSMethodType => ({
+  type: "TSFunctionType",
+  self: (el.kind !== "constructor" ? typeReference(classContractTypeName(parent.id.name)) : null),
+  typeAnnotation: (el.kind === "constructor" 
+     ? ctorTypeAnnotation(parent)
+     : (el.returnType?.type === "TSTypeAnnotation"
+        ? el.returnType 
+        : null)),
+  parameters: el.params.map(coerceParam),
+  leadingComments: null,
+  innerComments: null,
+  trailingComments: null,
+  loc: null,
+  start: null,
+  end: null,
+});
+
 type InterfaceChildMapper = Record<
   string,
-  (acc: ObjectRecord, el: any) => ObjectRecord
+  (acc: ObjectRecord, el: any, parent: any) => ObjectRecord
 >;
 
 const childMappers: InterfaceChildMapper = {
-  TSPropertySignature(acc, el: t.TSPropertySignature) {
+  TSPropertySignature(acc, el: t.TSPropertySignature, parent: any) {
     const type = el?.typeAnnotation?.typeAnnotation;
     return accumulateType(acc, el, type);
   },
-  TSMethodSignature(acc, el: t.TSMethodSignature) {
+  ClassProperty(acc, el: t.ClassProperty, parent: any) {
+    if (el?.typeAnnotation?.type === "TSTypeAnnotation") {
+      const type = el?.typeAnnotation?.typeAnnotation;
+      return accumulateType(acc, el, type);
+    } else {
+       return acc;
+    }
+  },
+  ClassMethod(acc, el: t.ClassMethod, parent: any) {
+    return accumulateType(acc, el, coerceClassMethod(el, parent));
+  },
+  TSMethodSignature(acc, el: t.TSMethodSignature, parent: any) {
     return accumulateType(acc, el, coerceMethodSignature(el));
   },
 };
 
-const returnObjectRecord = (acc: ObjectRecord, _: any) => acc;
+const returnObjectRecord = (acc: ObjectRecord, _: any, parent: any) => acc;
 
 const getObjectTypes = (els: InterfaceChild[]): ObjectRecord => {
   return els.reduce((acc: ObjectRecord, el) => {
     const fn = childMappers[el.type] || returnObjectRecord;
-    return fn(acc, el);
+    return fn(acc, el, null);
+  }, {});
+};
+
+const getClassTypes = (els: ClassChild[], parent: any): ObjectRecord => {
+  return els.reduce((acc: ObjectRecord, el) => {
+    const fn = childMappers[el.type] || returnObjectRecord;
+    return fn(acc, el, parent);
   }, {});
 };
 
@@ -447,6 +605,7 @@ const tokenMap: Record<string, TokenHandler> = {
     if (!name) return [];
     if (el?.returnType?.type !== "TSTypeAnnotation") return [];
     const syntax: FunctionSyntax = {
+      self: null,
       range: el.returnType.typeAnnotation,
       domain: getParameterTypes(el.params),
     };
@@ -497,6 +656,25 @@ const tokenMap: Record<string, TokenHandler> = {
       },
     ];
   },
+  ClassDeclaration(el: t.ClassDeclaration) {
+    const name = classContractTypeName(el.id.name);
+    const {body} = el.body;
+    const types = getClassTypes(body, el);
+    classDeclarations.add(el.id.name);
+    return [
+      {
+        name,
+        typeToMark: null,
+        type: {
+           hint: "object",
+           syntax: {types, isRecursive: checkRecursive(name, types)},
+        },
+        isSubExport: false,
+        isMainExport: false,
+        existsInJs: false,
+      },
+    ];
+  }
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -512,6 +690,8 @@ const reduceTokens = (l: t.Statement[]): ContractToken[] => {
 
 const getContractTokens = (el: t.Node): ContractToken[] => {
   const fn = tokenMap[el.type] || noToken;
+  if (fn === noToken) { console.log("NO TOKEN", el.type); }
+
   return fn(el);
 };
 // }}}
@@ -544,6 +724,7 @@ const depMap: DepMapper = {
     return getTypeDependencies({
       hint: "function",
       syntax: {
+        self: null,
         domain: getParameterTypes(type.parameters),
         range: type.typeAnnotation.typeAnnotation,
       },
@@ -648,9 +829,13 @@ const getContractGraph = (tokens: ContractToken[]): ContractGraph => {
 
 // Boundary Management - Exports, Requires {{{
 const getFinalName = (name: string): string => {
-  return name.includes(".")
-    ? name.substring(name.lastIndexOf(".") + 1, name.length)
-    : name;
+  if (false && classDeclarations.has(name)) { 
+     return classContractTypeName(name);
+  } else {
+     return name.includes(".")
+       ? name.substring(name.lastIndexOf(".") + 1, name.length)
+       : name;
+  }
 };
 
 const getContractName = (name: string): string =>
@@ -714,6 +899,12 @@ const nameReference = (refName: string): t.Expression => {
   });
 };
 
+const classReference = (refName: string): t.Expression => {
+  return template.expression(`%%name%%`)({
+    name: classContractTypeName(refName) + "Contract",
+  });
+};
+
 const extractRefParams = (ref: t.TSTypeReference): t.TSType[] => {
   const params = ref?.typeParameters?.params;
   if (!Array.isArray(params)) {
@@ -739,6 +930,8 @@ const makeReduceNode = (env: ContractGraph) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleUnknownReference = (ref: t.TSTypeReference) => {
     const typeName = getTypeName(ref.typeName);
+console.log("TN=", typeName);
+    if (classDeclarations.has(typeName)) return classReference(typeName);
     if (typeIsInEnvironment(typeName)) return nameReference(typeName);
     return giveUpOnReference(ref);
   };
@@ -843,6 +1036,7 @@ const makeReduceNode = (env: ContractGraph) => {
     },
     TSFunctionType(type: t.TSFunctionType) {
       return mapFunction({
+        self: (<TSMethodType>type).self ? (<TSMethodType>type).self : null,
         domain: getParameterTypes(type.parameters),
         range: type.typeAnnotation?.typeAnnotation || t.tsAnyKeyword(),
       });
@@ -915,10 +1109,15 @@ const makeReduceNode = (env: ContractGraph) => {
     });
   };
 
+  function mapSelf(self: any) {
+    return self === null ? "CT.trueCT" : mapFlat(self);
+  }
+
   const mapFunction = (stx: FunctionSyntax) => {
     return template.expression(
-      `CT.CTFunction(CT.trueCT, %%domain%%, %%range%%)`
+      `CT.CTFunction(%%self%%, %%domain%%, %%range%%)`
     )({
+      self: mapSelf(stx.self),
       domain: mapDomain(stx.domain),
       range: mapFlat(stx.range),
     });
