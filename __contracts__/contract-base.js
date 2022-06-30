@@ -86,13 +86,14 @@ function CTFlat(pred) {
   if (typeof pred !== "function") {
     throw new ContractError("Illegal predicate: " + pred);
   } else {
-    function mkWrapper(blame_object) {
+    function mkWrapper(blame_object, swap) {
       return new CTWrapper(function (value) {
         if (pred(value)) {
           return value;
         } else {
           return signal_contract_violation(
             value,
+	    swap,
             blame_object,
             "Predicate `" +
               predToString(pred) +
@@ -105,8 +106,8 @@ function CTFlat(pred) {
     }
     return new CT(pred.toString(), pred, function (blame_object) {
       return {
-        t: mkWrapper(blame_object),
-        f: mkWrapper(blame_swap(blame_object)),
+        t: mkWrapper(blame_object, false),
+        f: mkWrapper(blame_object, true),
       };
     });
   }
@@ -213,7 +214,10 @@ function CTFunction(self, domain, range) {
   }
 
   return new CT("CTFunction", firstOrder, function (blame_object) {
-    function mkWrapper(blame_object, swap_blame_object, sik, rik, disk) {
+    function mkWrapper(swap) {
+      const sik =  swap ? "f" : "t"
+      const rik =  swap ? "f" : "t"
+      const disk = swap ? "t" : "f"
       const si = coerced_si.wrapper(blame_object);
       const dis = coerced_args.map((d) => d.contract.wrapper(blame_object));
       const ri = coerced_ri.wrapper(blame_object);
@@ -263,7 +267,8 @@ function CTFunction(self, domain, range) {
           } else {
             return signal_contract_violation(
               target,
-              swap_blame_object,
+	      !swap,
+              blame_object,
               "Wrong argument count " + args.length + "/" + domain.length
             ).apply(self, args);
           }
@@ -275,6 +280,7 @@ function CTFunction(self, domain, range) {
         } else {
           return signal_contract_violation(
             value,
+            swap,
             blame_object,
             "CTFunction: Not a function `" + toStr(value) + "': "
           );
@@ -283,8 +289,8 @@ function CTFunction(self, domain, range) {
     }
 
     return {
-      t: mkWrapper(blame_object, blame_swap(blame_object), "t", "t", "f"),
-      f: mkWrapper(blame_swap(blame_object), blame_object, "f", "f", "t"),
+      t: mkWrapper(false),
+      f: mkWrapper(true),
     };
   });
 }
@@ -401,7 +407,9 @@ function CTFunctionD(domain, range, info_indy) {
   const range_ctc = CTCoerce(range, "CTFunctionD, range");
 
   return new CT("CTFunctionD", firstOrder, function (blame_object) {
-    function mkWrapper(blame_object, rik, disk) {
+    function mkWrapper(swap) {
+      const rik = swap ? "f" : "t"
+      const disk = swap ? "t" : "f"
       const normal_dis = [];
       const dep_dis = [];
       for (let i = 0; i < domain.length; i++) {
@@ -419,6 +427,7 @@ function CTFunctionD(domain, range, info_indy) {
           if (args.length !== domain.length) {
             return signal_contract_violation(
               target,
+	      swap,
               blame_object,
               "Wrong number of argument " + args.length + "/" + domain.length
             );
@@ -471,6 +480,7 @@ function CTFunctionD(domain, range, info_indy) {
         } else {
           return signal_contract_violation(
             value,
+	    swap,
             blame_object,
              "CTFunctionD: Not a function `" + toStr(value)
           );
@@ -479,8 +489,8 @@ function CTFunctionD(domain, range, info_indy) {
     }
 
     return {
-      t: mkWrapper(blame_object, "t", "f"),
-      f: mkWrapper(blame_swap(blame_object), "f", "t"),
+      t: mkWrapper(false),
+      f: mkWrapper(true),
     };
   });
 }
@@ -587,15 +597,15 @@ function CTRec(thunk) {
 
   return new CT("CTRec", firstOrder, function (blame_object) {
     let ei = false;
-    function mkWrapper(blame_object, kt) {
+    function mkWrapper(kt) {
       return new CTWrapper(function (value) {
         if (!ei) ei = mthunk().wrapper(blame_object);
         return ei[kt].ctor(value);
       });
     }
     return {
-      t: mkWrapper(blame_object, "t"),
-      f: mkWrapper(blame_swap(blame_object), "f"),
+      t: mkWrapper("t"),
+      f: mkWrapper("f"),
     };
   });
 }
@@ -614,8 +624,9 @@ function CTAnd(...args) {
       return true;
     },
     function (blame_object) {
-      function mkWrapper(blame_object, kt) {
-	const get_set_blame_objects = neg_choice(blame_object, argcs.length);
+      function mkWrapper(swap) {
+        const kt = swap ? "f" : "t"
+	const get_set_blame_objects = neg_choice(swap, blame_object, argcs.length);
 
         function do_wrapping(target, blame_objects) {
             var wrapped_target = target;
@@ -628,7 +639,7 @@ function CTAnd(...args) {
 
         const handler = {
           apply: function (target, self, target_args) {
-            const blame_objects = neg_choice(blame_object, argcs.length);
+            const blame_objects = neg_choice(swap, blame_object, argcs.length);
             var wrapped_target = do_wrapping(target, blame_objects);
             // MS 30apr2021: is it correct not to apply any contract to self?
             const r = wrapped_target.apply(self, target_args);
@@ -653,6 +664,7 @@ function CTAnd(...args) {
             if (!argcs[i].firstOrder(value)) {
               signal_contract_violation(
                 value,
+		swap, 
                 blame_object,
                 "CTAnd argument " + i + " didn't apply: " + value
               );
@@ -664,8 +676,8 @@ function CTAnd(...args) {
         });
       }
       return {
-        t: mkWrapper(blame_object, "t"),
-        f: mkWrapper(blame_swap(blame_object), "f"),
+        t: mkWrapper(false),
+        f: mkWrapper(true),
       };
     }
   );
@@ -679,7 +691,8 @@ function CTOrExplicitChoice(lchoose, left, rchoose, right) {
     "CTOr",
     (x) => lchoose(x) || rchoose(x),
     function (blame_object) {
-      function mkWrapper(blame_object, kt) {
+      function mkWrapper(swap) {
+        const kt = swap ? "f" : "t"
         const ei_l = left.wrapper(blame_object);
         const ei_r = right.wrapper(blame_object);
         return new CTWrapper(function (value) {
@@ -689,14 +702,15 @@ function CTOrExplicitChoice(lchoose, left, rchoose, right) {
           if (is_r) return ei_r[kt].ctor(value);
           return signal_contract_violation(
             value,
+	    swap,
             blame_object,
             "CTOr neither applied: " + value
           );
         });
       }
       return {
-        t: mkWrapper(blame_object, "t"),
-        f: mkWrapper(blame_swap(blame_object), "f"),
+        t: mkWrapper(false),
+        f: mkWrapper(true)
       };
     }
   );
@@ -714,7 +728,8 @@ function CTOr(...args)  {
         "CTOr",
         or_first_order,
         function (blame_object) {
-            function mkWrapper(blame_object, kt) {
+            function mkWrapper(swap) {
+                const kt = swap ? "f" : "t"
                 function do_wrapping(target, blame_objects) {
                     var wrapped_target = target;
                     for (let i = 0; i < argcs.length; ++i) {
@@ -723,7 +738,7 @@ function CTOr(...args)  {
                     }
                     return wrapped_target;
                 }
-                const blame_objects = pos_choice(blame_object, argcs.length);
+                const blame_objects = pos_choice(swap, blame_object, argcs.length);
                 const handler = {
                     apply: function (target, self, target_args) {
                         const wrapped_target = do_wrapping(target, blame_objects);
@@ -748,6 +763,7 @@ function CTOr(...args)  {
                     if (! or_first_order(value) ) {
                         signal_contract_violation(
                             value,
+			    swap,
                             blame_object,
                             "CTOr no arguments applied: " + value
                         );
@@ -758,8 +774,8 @@ function CTOr(...args)  {
                 });
             }
             return {
-                t: mkWrapper(blame_object, "t"),
-                f: mkWrapper(blame_swap(blame_object), "f"),
+                t: mkWrapper(false),
+                f: mkWrapper(true),
             };
         }
     );
@@ -778,7 +794,9 @@ function CTArray(element, options) {
   const element_ctc = CTCoerce(element, "CTArray");
 
   return new CT("CTArray", firstOrder, function (blame_object) {
-    function mkWrapper(blame_object, kt, kf) {
+    function mkWrapper(swap) {
+      const kt = swap ? "f" : "t"
+      const kf = swap ? "t" : "f"
       const ei = element_ctc.wrapper(blame_object);
 
       const handler = {
@@ -798,6 +816,7 @@ function CTArray(element, options) {
               // becuase we return without updating the array.
               // is this correct?
               true,
+	      swap,
               blame_swap(blame_object),
               "Cannot mutate immutable array"
             );
@@ -817,6 +836,7 @@ function CTArray(element, options) {
         } else {
           return signal_contract_violation(
             value,
+	    swap,
             blame_object,
             "Not an array `" + value + "' "
           );
@@ -825,8 +845,8 @@ function CTArray(element, options) {
     }
 
     return {
-      t: mkWrapper(blame_object, "t", "f"),
-      f: mkWrapper(blame_swap(blame_object), "f", "t"),
+      t: mkWrapper(false),
+      f: mkWrapper(true),
     };
   });
 }
@@ -874,7 +894,6 @@ function CTObject(ctfields) {
           }
         }
       }
-
       return true;
     } else {
       return false;
@@ -882,7 +901,9 @@ function CTObject(ctfields) {
   }
 
   return new CT("CTObject", firstOrder, function (blame_object) {
-    function mkWrapper(blame_object, kt, kf) {
+    function mkWrapper(swap) {
+      const kt = swap ? "f" : "t"
+      const kf = swap ? "t" : "f"
       const ei = {};
       const eis =
         stringIndexContract && stringIndexContract.wrapper(blame_object);
@@ -941,6 +962,7 @@ function CTObject(ctfields) {
           // TODO: this error message is not always accurate
           return signal_contract_violation(
             value,
+	    swap,
             blame_object,
             `XXObject mismatch, expecting "${toString(fields)}", got "${toString(
               value
@@ -951,8 +973,8 @@ function CTObject(ctfields) {
     }
 
     return {
-      t: mkWrapper(blame_object, "t", "f"),
-      f: mkWrapper(blame_swap(blame_object), "f", "t"),
+      t: mkWrapper(false),
+      f: mkWrapper(true),
     };
   });
 }
@@ -964,13 +986,15 @@ function CTCoerce(obj, who) {
   if (typeof obj === "function") {
     return CTCoerce(CTFlat(obj), who);
   } else if (obj === true) {
+    const alwaystrue = (v) => true
     return CTCoerce(
-      CTFlat((v) => true),
+      CTFlat(alwaystrue),
       who
     );
   } else if (isNumber(obj)) {
+    const constnumber = (v) => obj === v;
     return CTCoerce(
-      CTFlat((v) => obj === v),
+      CTFlat(constnumber),
       who
     );
   } else {
@@ -993,7 +1017,9 @@ function CTPromise(res, rej) {
   }
 
   return new CT("CTPromise", firstOrder, function (blame_object) {
-    function mkWrapper(blame_object, kt, kf) {
+    function mkWrapper(swap) {
+      const kt = swap ? "f" : "t"
+      const kf = swap ? "t" : "f"
       return new CTWrapper(function (value) {
         if (firstOrder(value)) {
           // Interpose a new Promise.prototype that will wrap
@@ -1018,6 +1044,7 @@ function CTPromise(res, rej) {
         } else {
           return signal_contract_violation(
             value,
+	    swap,
             blame_object,
             "Not a promise `" + value + "': "
           );
@@ -1025,8 +1052,8 @@ function CTPromise(res, rej) {
       });
     }
     return {
-      t: mkWrapper(blame_object, "t", "f"),
-      f: mkWrapper(blame_swap(blame_object), "f", "t"),
+      t: mkWrapper(false),
+      f: mkWrapper(true),
     };
   });
 }
@@ -1042,11 +1069,11 @@ blame_object =
     dead : (or/c false                      -- not involved in or/and contract
                 { dead : (or/c false        -- still alive
                                string) } )  -- dead with this error message
-    pos_state: (or/c false          -- no and/or in play
-                     blame_object)  -- our sibling in the or/and
+    pos_state: (or/c false                   -- no and/or in play
+                     (listof blame_object))  -- our siblings in the or/and
     neg_state: same as pos_state
   }
-// INVARIANT: (dead != false) <=> (pos_state != false) or (neg_state != false)
+// INVARIANT: (dead != false) <=> ((pos_state != false) or (neg_state != false))
 */
 
 function new_blame_object(pos, neg) {
@@ -1076,7 +1103,8 @@ function blame_replace_neg(blame_object, new_neg) {
     neg_state: blame_object.neg_state,
   };
 }
-function neg_choice(blame_object, howmany) {
+function neg_choice(swap, blame_object, howmany) {
+  if (swap) return pos_choice(false, blame_object, howmany);
   const blame_objects = [];
   for (let i = 0; i < howmany; ++i) {
     blame_objects[i] = {
@@ -1089,7 +1117,8 @@ function neg_choice(blame_object, howmany) {
   }
   return blame_objects;
 }
-function pos_choice(blame_object, howmany) {
+function pos_choice(swap, blame_object, howmany) {
+  if (swap) return neg_choice(false, blame_object, howmany);
   const blame_objects = [];
   for (let i = 0; i < howmany; ++i) {
     blame_objects[i] = {
@@ -1109,7 +1138,14 @@ const disableContracts = () => {
   should_disable_contracts = true;
 }
 
-function signal_contract_violation(value, blame_object, message) {
+function signal_contract_violation(value, swapped, blame_object, message) {
+    return true_signal_contract_violation(
+	value,
+	swapped ? blame_swap(blame_object) : blame_object,
+	message)
+}
+
+function true_signal_contract_violation(value, blame_object, message) {
   if (should_disable_contracts) return value;
   if (typeof blame_object.dead === "boolean") {
     // regular contract violation, no and/or here

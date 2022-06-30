@@ -11,7 +11,7 @@
 "use strict";
 "use hopscript";
 const assert = require("assert");
-const CT = require("./contract-base.js");
+const CT = require("./contract.js");
 
 const not_a_contract = [57];
 
@@ -246,6 +246,27 @@ assert.ok(
     return true;
   })(),
   "ctfunction.11.succeed"
+);
+assert.throws(
+  () => {
+    const posp = n => n >= 0
+
+    // Pos -> Bool
+    const posToBoolean = CT.CTFunction(true, [posp], CT.isBoolean);
+    // (Pos -> Bool) -> Number
+    const posToBoolTonumber = CT.CTFunction(true, [posToBoolean], CT.isNumber);
+
+    function impl(f) {
+	f(-4)
+	return 0;
+    }
+
+      const ctimpl = posToBoolTonumber.wrap(impl);
+      const lt_100 = x => true;
+      ctimpl(lt_100)
+  },
+  /blaming: pos/,
+  "ctfunction.12.succeed"
 );
 
 // check errors happen at the right time
