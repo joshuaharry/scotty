@@ -11,7 +11,7 @@
 "use strict";
 "use hopscript";
 const assert = require("assert");
-const CT = require("./contract.js");
+const CT = require("./contract-base.js");
 
 const not_a_contract = [57];
 
