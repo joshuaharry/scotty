@@ -3,7 +3,7 @@
 /*    -------------------------------------------------------------    */
 /*    Author      :  manuel serrano                                    */
 /*    Creation    :  Tue Feb 18 17:29:10 2020                          */
-/*    Last change :  Thu Jul 21 19:35:26 2022 (serrano)                */
+/*    Last change :  Thu Jul 21 19:56:31 2022 (serrano)                */
 /*    Copyright   :  2020-22 manuel serrano                            */
 /*    -------------------------------------------------------------    */
 /*    Test suite for JS contracts                                      */
@@ -973,6 +973,54 @@ assert.ok(
     const fnWithCt = fnContract.wrap(fn);
     return fnWithCt({ name: "hello" }) === "hello";
   })()
+);
+
+// constructors (new)
+assert.ok(
+   (() => {
+      function CTOR(x) {
+        this.x = x;
+      }
+
+      const cto = CT.CTObject({ x: CT.isNumber });
+      const ctf = CT.CTFunction(cto, [CT.isNumber], CT.trueCT);
+      const CTCTOR = ctf.wrap(CTOR);
+      const o1 = new CTCTOR(1);
+      return o1.x;
+   })(),
+   "ctor.1"
+);
+
+assert.throws(
+   () => {
+      function CTOR(x) {
+        this.x = x;
+      }
+      CTOR.prototype.y = 20;
+
+      const cto = CT.CTObject({ x: CT.isNumber });
+      const ctf = CT.CTFunction(cto, [CT.isNumber], CT.trueCT);
+      const CTCTOR = ctf.wrap(CTOR);
+      const o1 = new CTCTOR("1");
+      return o1.x;
+   },
+   "ctor.2"
+);
+
+assert.throws(
+   () => {
+      function CTOR(x) {
+        this.x = x;
+      }
+      CTOR.prototype.y = 20;
+
+      const cto = CT.CTObject({ x: CT.isNumber });
+      const ctf = CT.CTFunction(cto, [CT.isString], CT.trueCT);
+      const CTCTOR = ctf.wrap(CTOR);
+      const o1 = new CTCTOR("1");
+      return o1.x;
+   },
+   "ctor.2"
 );
 
 // object with prototype chains
