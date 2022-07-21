@@ -17,8 +17,8 @@ and a minimalist test suite.
 ### How to use the files:
 
 ```
-mkdir ~/.scotty/DefinitelyTyped/types/CLASSEX
-cp index.d.tex ~/.scotty/DefinitelyTyped/types/CLASSEX
+mkdir ~/.scotty/DefinitelyTyped/types/scotty-class-noinheritance
+cp index.d.ts ~/.scotty/DefinitelyTyped/types/scotty-class-noinheritance
 scotty full-mode
 npm test
 ```

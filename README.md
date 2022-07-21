@@ -14,6 +14,16 @@ That will put `scotty` onto your $PATH.
 
 For now, the types have to be placed in `~/.scotty/DefinitelyTyped` so that they can be copied.
 
+## Modifying
+
+To modify the compiler:
+
+  1. edit `scr/compiler.ts`
+  2. rebuild with `sh build/buid.sh`
+
+This will generate a new `dist/compiler.js` file. This is all what's needed.
+
+
 ## Usage
 scotty - A tool for experimenting with compiling types to contracts.
 

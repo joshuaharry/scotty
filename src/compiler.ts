@@ -930,7 +930,7 @@ const makeReduceNode = (env: ContractGraph) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleUnknownReference = (ref: t.TSTypeReference) => {
     const typeName = getTypeName(ref.typeName);
-console.log("TN=", typeName);
+    console.error("handleUnknownReference typeName=", typeName);
     if (classDeclarations.has(typeName)) return classReference(typeName);
     if (typeIsInEnvironment(typeName)) return nameReference(typeName);
     return giveUpOnReference(ref);
