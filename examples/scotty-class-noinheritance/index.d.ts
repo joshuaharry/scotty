@@ -3,9 +3,8 @@
  y:number;
    
  constructor(x:number, y:number);
-   
  toStr(): string;
- toNum(): number;
+ toNum(): string;
 }
 
 export function Point(): string;
