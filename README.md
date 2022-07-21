@@ -7,7 +7,7 @@ Run:
 ```sh
 npm install
 sh build/build.sh
-npm install -g .
+sudo npm install -g .
 ```
 
 That will put `scotty` onto your $PATH. 
