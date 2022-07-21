@@ -16,7 +16,7 @@ class Point {
 }
 
 function shift(p) {
-   return new Point(this.x + 1, this.y + 1);
+   return new Point(p.x + 1, p.y + 1);
 }
 
 exports.Point = Point;
