@@ -11,9 +11,7 @@ function test() {
    console.log("o.toNum=", o.toNum());
    console.log("o2.toNum=", o2.toNum());
    console.log("o.toStr=", o.toStr());
-/*    console.log("o2.toStr=", o2.toStr());                            */
-/*    return typeof(o.toStr()) === "string";                           */
-/*    return typeof(o2.toStr()) === "string";                          */
+   console.log("o2.toStr=", o2.toStr());
    return true;
 }
 
