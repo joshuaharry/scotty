@@ -1,9 +1,9 @@
 /*=====================================================================*/
-/*    .../jscontract/workspaces/contract/contract.test.js              */
+/*    .../jscontract/scotty/__contracts__/contract-base.test.js        */
 /*    -------------------------------------------------------------    */
 /*    Author      :  manuel serrano                                    */
 /*    Creation    :  Tue Feb 18 17:29:10 2020                          */
-/*    Last change :  Wed Jan 19 17:03:33 2022 (serrano)                */
+/*    Last change :  Thu Jul 21 19:35:26 2022 (serrano)                */
 /*    Copyright   :  2020-22 manuel serrano                            */
 /*    -------------------------------------------------------------    */
 /*    Test suite for JS contracts                                      */
@@ -15,9 +15,9 @@ const CT = require("./contract-base.js");
 
 const not_a_contract = [57];
 
-/*
- * predicates
- */
+/*---------------------------------------------------------------------*/
+/*    predicates                                                       */
+/*---------------------------------------------------------------------*/
 assert.ok(CT.isObject({ x: 3 }), "isObject.1");
 assert.ok(!CT.isObject(undefined), "isObject.2");
 assert.ok(
@@ -292,9 +292,9 @@ assert.throws(
   "ctfunction.arg2-check"
 );
 
-/*
- * CTFMethod
- */
+/*---------------------------------------------------------------------*/
+/*    CTFMethod ...                                                    */
+/*---------------------------------------------------------------------*/
 assert.ok(
   (() => {
     function CTOR(x) {
@@ -425,9 +425,9 @@ assert.throws(() => {
   return o1.getX() === 1 && CTOR.prototype.getX.apply(o1, []) === 1;
 }, "ctmethod.7");
 
-/*
- * CTFunctionD
- */
+/*---------------------------------------------------------------------*/
+/*    CTFunctionD                                                      */
+/*---------------------------------------------------------------------*/
 assert.deepStrictEqual(CT.__topsort([]), []);
 assert.deepStrictEqual(CT.__topsort([{ name: "x" }]), [0]);
 assert.deepStrictEqual(CT.__topsort([{ name: "x" }, { name: "y" }]), [0, 1]);
@@ -719,9 +719,9 @@ assert.throws(
   "ctor.arg2-check"
 );
 
-/*
- * CTObject
- */
+/*---------------------------------------------------------------------*/
+/*    CTObject                                                         */
+/*---------------------------------------------------------------------*/
 assert.ok(
   (() => {
     const tree = CT.CTObject({});
@@ -975,9 +975,42 @@ assert.ok(
   })()
 );
 
-/*
- * CTRec
- */
+// object with prototype chains
+assert.ok(
+   (() => {
+      function CTOR(x) {
+        this.x = x;
+      }
+      CTOR.prototype.y = 20;
+
+      const cto = CT.CTObject({ x: CT.isNumber }, { y: CT.isNumber });
+      const ctf = CT.CTFunction(cto, [CT.isNumber], CT.trueCT);
+      const CTCTOR = ctf.wrap(CTOR);
+      const o1 = new CTCTOR(1);
+      return o1.x + o1.y;
+   })(),
+   "prototype.1"
+);
+
+assert.throws(
+   () => {
+      function CTOR(x) {
+        this.x = x;
+      }
+      CTOR.prototype.y = 20;
+
+      const cto = CT.CTObject({ x: CT.isNumber });
+      const ctf = CT.CTFunction(cto, [CT.isNumber], CT.trueCT);
+      const CTCTOR = ctf.wrap(CTOR);
+      const o1 = new CTCTOR(1);
+      return o1.x + o1.y;
+   },
+   "prototype.2"
+);
+
+/*---------------------------------------------------------------------*/
+/*    CTRec                                                            */
+/*---------------------------------------------------------------------*/
 assert.throws(
   () => {
     const t2 = CT.CTRec(() => CT.isString);
@@ -1068,9 +1101,9 @@ assert.throws(
   "ctrec.7"
 );
 
-/*
- * CTArray
- */
+/*---------------------------------------------------------------------*/
+/*    CTArray                                                          */
+/*---------------------------------------------------------------------*/
 assert.ok(
   (() => {
     return 0 === CT.CTArray(CT.isNumber).wrap([]).length;
@@ -1700,9 +1733,9 @@ assert.throws(() => {
   return CT.RegExpCT.wrap("hi");
 });
 
-/*
- * Error messages
- */
+/*---------------------------------------------------------------------*/
+/*    Error messages                                                   */
+/*---------------------------------------------------------------------*/
 assert.ok(
   (() => {
     let message = null;
@@ -1765,3 +1798,4 @@ assert.ok(
   assert.ok(res === "true");
 }
 console.log("All tests currently passing!");
+

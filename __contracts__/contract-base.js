@@ -3,7 +3,7 @@
 /*    -------------------------------------------------------------    */
 /*    Author      :  manuel serrano                                    */
 /*    Creation    :  Tue Feb 18 17:19:39 2020                          */
-/*    Last change :  Thu Jul 21 14:21:04 2022 (serrano)                */
+/*    Last change :  Thu Jul 21 19:45:10 2022 (serrano)                */
 /*    Copyright   :  2020-22 manuel serrano                            */
 /*    -------------------------------------------------------------    */
 /*    Basic contract implementation                                    */
@@ -903,7 +903,7 @@ function CTArray(element, options) {
 /*---------------------------------------------------------------------*/
 /*    CTObject ...                                                     */
 /*---------------------------------------------------------------------*/
-function CTObject(ctfields, ctprotofields = []) {
+function CTObject(ctfields, ctprotofields = {}) {
   let stringIndexContract = false,
     numberIndexContract = false;
   let fields = {};
@@ -953,10 +953,8 @@ function CTObject(ctfields, ctprotofields = []) {
           if (typeof n === "number" && !numberIndexContract) {
             return false;
           }
-        } else {
-          if (!Object.hasOwnProperty(x, n) === fields[n].prototype) {
-            return false;
-          }
+        } else if (Object.hasOwnProperty(x, n) === fields[n].prototype) {
+          return false;
         }
       }
       return true;
@@ -1029,9 +1027,7 @@ function CTObject(ctfields, ctprotofields = []) {
             value,
 	    swap,
             blame_object,
-            `Object mismatch, expecting "${toString(fields)}", got "${toString(
-              value
-            )}"`
+            `Object mismatch, expecting "${toString(fields)}", got "${toString(value)}"`
           );
         }
       });
