@@ -188,10 +188,16 @@ interface FunctionTypescriptType {
   syntax: FunctionSyntax;
 }
 
+interface ClassTypescriptType {
+  hint: "class";
+  syntax: FunctionSyntax;
+}
+
 type TypescriptType =
   | FlatTypescriptType
   | ObjectTypescriptType
-  | FunctionTypescriptType;
+  | FunctionTypescriptType
+  | ClassTypescriptType;
 
 type FlowObjectRecord = Record<string, {type: t.FlowType}>;
 
@@ -602,18 +608,20 @@ const tokenMap: Record<string, TokenHandler> = {
   },
   TSDeclareFunction(el: t.TSDeclareFunction) {
     const name = el.id?.name;
+    const isClass = classDeclarations.has(name);
     if (!name) return [];
     if (el?.returnType?.type !== "TSTypeAnnotation") return [];
     const syntax: FunctionSyntax = {
-      self: null,
+      self: isClass ? typeReference(classContractTypeName(name)) : null,
       range: el.returnType.typeAnnotation,
       domain: getParameterTypes(el.params),
     };
+    const hint = isClass ? "class" : "function";
     return [
       {
         name,
         typeToMark: null,
-        type: {hint: "function", syntax},
+        type: {hint, syntax},
         isSubExport: false,
         isMainExport: false,
         existsInJs: true,
@@ -661,6 +669,7 @@ const tokenMap: Record<string, TokenHandler> = {
     const {body} = el.body;
     const types = getClassTypes(body, el);
     classDeclarations.add(el.id.name);
+console.log("CLASS DECL ", name);
     return [
       {
         name,
@@ -746,7 +755,7 @@ const getDeps = (type: t.TSType): string[] => {
 
 const getTypeDependencies = (type: TypescriptType): string[] => {
   if (type.hint === "flat") return getDeps(type.syntax as t.TSType);
-  if (type.hint === "function") {
+  if (type.hint === "function" || type.hint === "class") {
     const syntax = type.syntax as FunctionSyntax;
     return [
       ...syntax.domain.flatMap((stx) => getDeps(stx.type)),
@@ -1123,6 +1132,16 @@ const makeReduceNode = (env: ContractGraph) => {
     });
   };
 
+  const mapClass = (stx: FunctionSyntax) => {
+    return template.expression(
+      `CT.CTClass(%%self%%, %%domain%%, %%range%%)`
+    )({
+      self: mapSelf(stx.self),
+      domain: mapDomain(stx.domain),
+      range: mapFlat(stx.range),
+    });
+  };
+
   const getObjectTemplate = (stx: ObjectSyntax) =>
     `CT.CTObject({ ${Object.keys(stx.types)
       .map((key) => `${key}: %%${key}%%`)
@@ -1184,6 +1203,7 @@ const makeReduceNode = (env: ContractGraph) => {
   const mapType = (type: TypescriptType): t.Expression => {
     if (type.hint === "flat") return mapFlat(type.syntax);
     if (type.hint === "function") return mapFunction(type.syntax);
+    if (type.hint === "class") return mapClass(type.syntax);
     return mapObject(type.syntax);
   };
 

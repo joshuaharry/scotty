@@ -3,7 +3,7 @@
 /*    -------------------------------------------------------------    */
 /*    Author      :  manuel serrano                                    */
 /*    Creation    :  Tue Feb 18 17:19:39 2020                          */
-/*    Last change :  Thu Jul 21 10:18:36 2022 (serrano)                */
+/*    Last change :  Thu Jul 21 10:37:00 2022 (serrano)                */
 /*    Copyright   :  2020-22 manuel serrano                            */
 /*    -------------------------------------------------------------    */
 /*    Basic contract implementation                                    */
@@ -274,7 +274,6 @@ function CTFunction(self, domain, range) {
           }
         },
         construct: function(target, args, newtarget) {
-console.log("CTOR...", args.length, arity);
           if (args.length === arity)
             switch (args.length) {
               case 0:
