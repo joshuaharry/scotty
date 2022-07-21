@@ -1,9 +1,9 @@
 /*=====================================================================*/
-/*    /misc/serrano-misc/scotty/__contracts__/contract-base.js         */
+/*    .../project/jscontract/scotty/__contracts__/contract-base.js     */
 /*    -------------------------------------------------------------    */
 /*    Author      :  manuel serrano                                    */
 /*    Creation    :  Tue Feb 18 17:19:39 2020                          */
-/*    Last change :  Thu Jun 16 13:14:40 2022 (serrano)                */
+/*    Last change :  Thu Jul 21 10:18:36 2022 (serrano)                */
 /*    Copyright   :  2020-22 manuel serrano                            */
 /*    -------------------------------------------------------------    */
 /*    Basic contract implementation                                    */
@@ -273,6 +273,49 @@ function CTFunction(self, domain, range) {
             ).apply(self, args);
           }
         },
+        construct: function(target, args, newtarget) {
+console.log("CTOR...", args.length, arity);
+          if (args.length === arity)
+            switch (args.length) {
+              case 0:
+                return si_wrapper.ctor(
+                  new target()
+                );
+              case 1:
+                return si_wrapper.ctor(
+                  new target(di0_wrapper.ctor(args[0]))
+                );
+              case 2:
+                return si_wrapper.ctor(
+                  new target(di0_wrapper.ctor(args[0]),
+                             di1_wrapper.ctor(args[1]))
+                );
+              default:
+                return si_wrapper.ctor(
+                  new target(...map2fix(args, dis, disk))
+                );
+            }
+          else if (args.length >= minarity && args.length <= maxarity) {
+            return si_wrapper.ctor(
+              new target(...map2opt(args, dis, disk))
+            );
+          } else if (
+            args.length >= minarity &&
+            maxarity === Number.MIN_SAFE_INTEGER
+          ) {
+            return si_wrapper.ctor(
+              new target(...map2dotdotdot(args, dis, disk)
+              )
+            );
+          } else {
+            return signal_contract_violation(
+              target,
+	      !swap,
+              blame_object,
+              "Wrong argument count " + args.length + "/" + domain.length
+            ).apply(self, args);
+          }
+        }
       };
       return new CTWrapper(function (value) {
         if (firstOrder(value)) {
