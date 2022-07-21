@@ -11,7 +11,7 @@ class Point {
       return 0;
    }
    toNum() {
-      return 0;
+      return this.x + this.y;
    }
 }
 

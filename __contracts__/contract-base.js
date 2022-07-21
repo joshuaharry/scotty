@@ -3,7 +3,7 @@
 /*    -------------------------------------------------------------    */
 /*    Author      :  manuel serrano                                    */
 /*    Creation    :  Tue Feb 18 17:19:39 2020                          */
-/*    Last change :  Thu Jul 21 10:37:00 2022 (serrano)                */
+/*    Last change :  Thu Jul 21 14:21:04 2022 (serrano)                */
 /*    Copyright   :  2020-22 manuel serrano                            */
 /*    -------------------------------------------------------------    */
 /*    Basic contract implementation                                    */
@@ -620,6 +620,13 @@ function find_depended_on(domain) {
 }
 
 /*---------------------------------------------------------------------*/
+/*    CTFunction ...                                                   */
+/*---------------------------------------------------------------------*/
+function CTClass(self, domain) {
+   return CTFunction(self, domain, True);
+}
+
+/*---------------------------------------------------------------------*/
 /*    CTRec ...                                                        */
 /*---------------------------------------------------------------------*/
 function CTRec(thunk) {
@@ -896,7 +903,7 @@ function CTArray(element, options) {
 /*---------------------------------------------------------------------*/
 /*    CTObject ...                                                     */
 /*---------------------------------------------------------------------*/
-function CTObject(ctfields) {
+function CTObject(ctfields, ctprotofields = []) {
   let stringIndexContract = false,
     numberIndexContract = false;
   let fields = {};
@@ -920,10 +927,22 @@ function CTObject(ctfields) {
     }
   }
 
+  for (let k in ctprotofields) {
+    const p = ctprotofields[k];
+    fields[k] = { 
+       contract: CTCoerce(p, k + "@CTObject"),
+       prototype: true
+    }
+  }
+
   function firstOrder(x) {
     if (x instanceof Object) {
       for (let n in fields) {
-        if (!(n in x) && !fields[n].optional) return false;
+        if (!(n in x) 
+ 	   && !fields[n].optional 
+ 	   && !fields[n].prototype) {
+ 	  return false;
+	}
       }
 
       for (let n in x) {
@@ -932,6 +951,10 @@ function CTObject(ctfields) {
             return false;
           }
           if (typeof n === "number" && !numberIndexContract) {
+            return false;
+          }
+        } else {
+          if (!Object.hasOwnProperty(x, n) === fields[n].prototype) {
             return false;
           }
         }
@@ -1006,7 +1029,7 @@ function CTObject(ctfields) {
             value,
 	    swap,
             blame_object,
-            `XXObject mismatch, expecting "${toString(fields)}", got "${toString(
+            `Object mismatch, expecting "${toString(fields)}", got "${toString(
               value
             )}"`
           );
@@ -1348,6 +1371,7 @@ exports.CTFunctionD = CTFunctionD;
 exports.CTPromise = CTPromise;
 exports.CTArray = CTArray;
 exports.CTFlat = CTFlat;
+exports.CTClass = CTClass;
 
 exports.isObject = isObject;
 exports.isFunction = isFunction;

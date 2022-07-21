@@ -11,7 +11,7 @@ import prettier from "prettier";
 const readTypesFromFile = (name: string): string =>
   fs.readFileSync(path.join(process.cwd(), name), "utf-8");
 
-let classDeclarations = new Set();
+let classDeclarations = new Map();
 
 function classContractTypeName(name: string): string {
    return name + "$Class";
@@ -160,6 +160,11 @@ interface FunctionSyntax {
   self: t.TSType | null;
 }
 
+interface ClassSyntax {
+  domain: FunctionParameter[];
+  self: t.TSType;
+}
+
 interface ObjectChunk {
   type: t.TSType;
   isOptional: boolean;
@@ -171,6 +176,7 @@ type ObjectRecord = Record<string, ObjectChunk>;
 interface ObjectSyntax {
   types: ObjectRecord;
   isRecursive: boolean;
+  prototypes?: ObjectRecord;
 }
 
 interface FlatTypescriptType {
@@ -190,7 +196,7 @@ interface FunctionTypescriptType {
 
 interface ClassTypescriptType {
   hint: "class";
-  syntax: FunctionSyntax;
+  syntax: ClassSyntax;
 }
 
 type TypescriptType =
@@ -426,21 +432,45 @@ const childMappers: InterfaceChildMapper = {
   TSMethodSignature(acc, el: t.TSMethodSignature, parent: any) {
     return accumulateType(acc, el, coerceMethodSignature(el));
   },
+  TSDeclareMethod(acc, el: t.ClassMethod, parent: any) {
+    return accumulateType(acc, el, coerceClassMethod(el, parent));
+  },
 };
 
 const returnObjectRecord = (acc: ObjectRecord, _: any, parent: any) => acc;
 
-const getObjectTypes = (els: InterfaceChild[]): ObjectRecord => {
+const getObjectPropTypes = (els: InterfaceChild[]): ObjectRecord => {
   return els.reduce((acc: ObjectRecord, el) => {
     const fn = childMappers[el.type] || returnObjectRecord;
     return fn(acc, el, null);
   }, {});
 };
 
-const getClassTypes = (els: ClassChild[], parent: any): ObjectRecord => {
+const getClassPropTypes = (els: ClassChild[], parent: any): ObjectRecord => {
   return els.reduce((acc: ObjectRecord, el) => {
-    const fn = childMappers[el.type] || returnObjectRecord;
-    return fn(acc, el, parent);
+    if (el.type === "TSDeclareMethod") {
+       // methods are not instances property, skip them
+       return acc;
+    } else {
+       const fn = childMappers[el.type] || returnObjectRecord;
+       return fn(acc, el, parent);
+    }
+  }, {});
+};
+
+const getClassMetTypes = (els: ClassChild[], parent: any): ObjectRecord => {
+  return els.reduce((acc: ObjectRecord, el) => {
+    if (el.type === "TSDeclareMethod") {
+       if (el.kind === "constructor") {
+          // skip the constructor
+          return acc;
+       } else {
+          const fn = childMappers[el.type] || returnObjectRecord;
+          return fn(acc, el, parent);
+       }
+    } else {
+      return acc;
+    }
   }, {});
 };
 
@@ -591,7 +621,7 @@ const tokenMap: Record<string, TokenHandler> = {
   TSInterfaceDeclaration(el: t.TSInterfaceDeclaration) {
     const name = el.id.name;
     const {body} = el.body;
-    const types = getObjectTypes(body);
+    const types = getObjectPropTypes(body);
     return [
       {
         name,
@@ -608,20 +638,18 @@ const tokenMap: Record<string, TokenHandler> = {
   },
   TSDeclareFunction(el: t.TSDeclareFunction) {
     const name = el.id?.name;
-    const isClass = classDeclarations.has(name);
     if (!name) return [];
     if (el?.returnType?.type !== "TSTypeAnnotation") return [];
     const syntax: FunctionSyntax = {
-      self: isClass ? typeReference(classContractTypeName(name)) : null,
+      self: null,
       range: el.returnType.typeAnnotation,
       domain: getParameterTypes(el.params),
     };
-    const hint = isClass ? "class" : "function";
     return [
       {
         name,
         typeToMark: null,
-        type: {hint, syntax},
+        type: {hint: "function", syntax},
         isSubExport: false,
         isMainExport: false,
         existsInJs: true,
@@ -632,9 +660,7 @@ const tokenMap: Record<string, TokenHandler> = {
     if (!el.declaration) return [];
     const tokens = getContractTokens(el.declaration);
     if (tokens.length === 0) return [];
-    if (tokens.length > 1) return [];
-    const statement = tokens[0];
-    return [{...statement, isSubExport: statement.existsInJs}];
+    return tokens.map(statement => ({...statement, isSubExport: statement.existsInJs}));
   },
   ExportDefaultDeclaration(el: t.ExportDefaultDeclaration) {
     if (el.declaration.type !== 'Identifier') return [];
@@ -665,23 +691,43 @@ const tokenMap: Record<string, TokenHandler> = {
     ];
   },
   ClassDeclaration(el: t.ClassDeclaration) {
-    const name = classContractTypeName(el.id.name);
+    const name = el.id.name;
+    const className = classContractTypeName(name);
     const {body} = el.body;
-    const types = getClassTypes(body, el);
-    classDeclarations.add(el.id.name);
-console.log("CLASS DECL ", name);
+    const types = getClassPropTypes(body, el);
+    const prototypes = getClassMetTypes(body, el);
+    const ctor = <t.ClassMethod>body.find(el => el.type === "TSDeclareMethod" && el.kind === "constructor");
+    //const ctorType = coerceClassMethod(ctor, el);
+    
+    classDeclarations.set(name, el);
     return [
+      // the class
       {
-        name,
+        name: className,
         typeToMark: null,
         type: {
            hint: "object",
-           syntax: {types, isRecursive: checkRecursive(name, types)},
+           syntax: {types, prototypes, isRecursive: true},
         },
         isSubExport: false,
         isMainExport: false,
         existsInJs: false,
       },
+      // the constructor
+      {
+        name: name,
+        typeToMark: null,
+        type: {
+          hint: "class",
+          syntax: {
+             self: typeReference(className),
+             domain: getParameterTypes(ctor.params),
+          }
+        },
+        isSubExport: false,
+        isMainExport: false,
+        existsInJs: true,
+      }
     ];
   }
 };
@@ -700,7 +746,7 @@ const reduceTokens = (l: t.Statement[]): ContractToken[] => {
 const getContractTokens = (el: t.Node): ContractToken[] => {
   const fn = tokenMap[el.type] || noToken;
   if (fn === noToken) { console.log("NO TOKEN", el.type); }
-
+  const ts = fn(el);
   return fn(el);
 };
 // }}}
@@ -754,16 +800,27 @@ const getDeps = (type: t.TSType): string[] => {
 };
 
 const getTypeDependencies = (type: TypescriptType): string[] => {
-  if (type.hint === "flat") return getDeps(type.syntax as t.TSType);
-  if (type.hint === "function" || type.hint === "class") {
-    const syntax = type.syntax as FunctionSyntax;
-    return [
-      ...syntax.domain.flatMap((stx) => getDeps(stx.type)),
-      ...getDeps(syntax.range),
-    ];
-  }
-  const syntax = type.syntax as ObjectSyntax;
-  return Object.values(syntax.types).flatMap((type) => getDeps(type.type));
+  switch (type.hint) {
+    case "flat": 
+       return getDeps(type.syntax as t.TSType);
+    case "function": {
+       const syntax = type.syntax as FunctionSyntax;
+       return [
+         ...syntax.domain.flatMap((stx) => getDeps(stx.type)),
+         ...getDeps(syntax.range),
+       ];
+    }
+   case "class": {
+       const syntax = type.syntax as ClassSyntax;
+       return [
+         ...syntax.domain.flatMap((stx) => getDeps(stx.type))
+       ];
+    }
+    default: {
+       const syntax = type.syntax as ObjectSyntax;
+       return Object.values(syntax.types).flatMap((type) => getDeps(type.type));
+    }
+   }
 };
 
 const getDependencies = (types: TypescriptType[]): string[] =>
@@ -1132,20 +1189,29 @@ const makeReduceNode = (env: ContractGraph) => {
     });
   };
 
-  const mapClass = (stx: FunctionSyntax) => {
+  const mapClass = (stx: ClassSyntax) => {
     return template.expression(
-      `CT.CTClass(%%self%%, %%domain%%, %%range%%)`
+      `CT.CTClass(%%self%%, %%domain%%)`
     )({
       self: mapSelf(stx.self),
-      domain: mapDomain(stx.domain),
-      range: mapFlat(stx.range),
+      domain: mapDomain(stx.domain)
     });
   };
 
-  const getObjectTemplate = (stx: ObjectSyntax) =>
-    `CT.CTObject({ ${Object.keys(stx.types)
-      .map((key) => `${key}: %%${key}%%`)
-      .join(", ")} })`;
+  const getObjectTemplate = (stx: ObjectSyntax) => {
+    if (stx.prototypes) {
+       return `CT.CTObject({ ${Object.keys(stx.types)
+                                .map((key) => `${key}: %%${key}%%`)
+                                .join(", ")} },
+                           { ${Object.keys(stx.prototypes)
+                                .map((key) => `${key}: %%${key}%%`)
+                                .join(", ")} })`;
+    } else {
+       return `CT.CTObject({ ${Object.keys(stx.types)
+                .map((key) => `${key}: %%${key}%%`)
+                .join(", ")} })`;
+    }
+  }
 
   type ObjectContracts = Record<string, t.Expression>;
 
@@ -1180,7 +1246,11 @@ const makeReduceNode = (env: ContractGraph) => {
   };
 
   const getObjectContracts = (stx: ObjectSyntax): ObjectContracts => {
-    return Object.entries(stx.types).reduce((acc, chunkEntry) => {
+    let types = Object.entries(stx.types);
+    if (stx.prototypes) {
+      types = types.concat(Object.entries(stx.prototypes));
+    }
+    return types.reduce((acc, chunkEntry) => {
       const [name, type] = chunkEntry;
       if (type.isOptional) return addOptionalType(acc, chunkEntry);
       if (type.isIndex) return addIndexType(acc, chunkEntry);
