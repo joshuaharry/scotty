@@ -698,7 +698,6 @@ const tokenMap: Record<string, TokenHandler> = {
     const types = getClassPropTypes(body, el);
     const prototypes = getClassMetTypes(body, el);
     const ctor = <t.ClassMethod>body.find(el => el.type === "TSDeclareMethod" && el.kind === "constructor");
-    //const ctorType = coerceClassMethod(ctor, el);
     
     classDeclarations.set(name, el);
     return [
@@ -1201,13 +1200,13 @@ const makeReduceNode = (env: ContractGraph) => {
 
   const getObjectTemplate = (stx: ObjectSyntax) => {
     if (stx.prototypes) {
-       return `CT.CTObject({ ${Object.keys(stx.types)
-                                .map((key) => `${key}: %%${key}%%`)
-                                .join(", ")} },
-                           { ${Object.keys(stx.prototypes)
-                                .map((key) => `${key}: %%${key}%%`)
-                                .join(", ")} },
-                           originalModule.${stx.clazz})`;
+       return `CT.CTInstance({ ${Object.keys(stx.types)
+                                  .map((key) => `${key}: %%${key}%%`)
+                                  .join(", ")} },
+                             { ${Object.keys(stx.prototypes)
+                                  .map((key) => `${key}: %%${key}%%`)
+                                  .join(", ")} },
+                             originalModule.${stx.clazz})`;
     } else {
        return `CT.CTObject({ ${Object.keys(stx.types)
                 .map((key) => `${key}: %%${key}%%`)

@@ -4,7 +4,7 @@
 /*    -------------------------------------------------------------    */
 /*    Author      :  manuel serrano                                    */
 /*    Creation    :  Tue Feb 18 17:19:39 2020                          */
-/*    Last change :  Fri Jul 22 10:21:30 2022 (serrano)                */
+/*    Last change :  Fri Jul 22 10:47:57 2022 (serrano)                */
 /*    Copyright   :  2020-22 manuel serrano                            */
 /*    -------------------------------------------------------------    */
 /*    Basic contract implementation                                    */
@@ -1047,6 +1047,130 @@ function CTObject(ctfields, ctprotofields = {}, clazz = false) {
 }
 
 /*---------------------------------------------------------------------*/
+/*    CTInstance ...                                                   */
+/*---------------------------------------------------------------------*/
+function CTInstance(ctfields, ctprotofields, clazz) {
+  let stringIndexContract = false,
+    numberIndexContract = false;
+  let fields = {};
+
+  for (let k in ctfields) {
+    const p = ctfields[k];
+
+    if ("contract" in p) {
+      if (p.index === "string") {
+        stringIndexContract = CTCoerce(p.contract, k + "@CTObject");
+      } else if (p.index === "number") {
+        numberIndexContract = CTCoerce(p.contract, k + "@CTObject");
+      } else {
+        fields[k] = {
+          contract: CTCoerce(p.contract, k + "@CTObject"),
+          optional: p.optional,
+        };
+      }
+    } else {
+      fields[k] = { contract: CTCoerce(p, k + "@CTObject") };
+    }
+  }
+
+  // wrap all the clazz properties
+  for (let k in ctprotofields) {
+    clazz.prototype[k] = ctprotofields[k].wrap(clazz.prototype[k]);
+  }
+  
+  function firstOrder(x) {
+    if (x instanceof clazz) {
+      for (let n in fields) {
+        if (!(n in x) 
+ 	   && !fields[n].optional 
+ 	   && !fields[n].prototype) {
+ 	  return false;
+	}
+      }
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  return new CT("CTObject", firstOrder, function (blame_object) {
+    function mkWrapper(swap) {
+      const kt = swap ? "f" : "t"
+      const kf = swap ? "t" : "f"
+      const ei = {};
+      const eis =
+        stringIndexContract && stringIndexContract.wrapper(blame_object);
+      const ein =
+        numberIndexContract && numberIndexContract.wrapper(blame_object);
+
+      for (let k in fields) {
+        const ctc = fields[k].contract;
+
+        ei[k] = ctc.wrapper(blame_object);
+      }
+      function makeHandler(priv) {
+        return {
+          get: function (target, prop) {
+            const ct =
+              ei[prop] ||
+              (typeof prop === "string" && eis) ||
+              (typeof prop === "number" && ein);
+
+            const cache = priv[prop];
+
+            if (ct) {
+              if (cache) {
+                return cache;
+              } else {
+                const targetProp = target[prop];
+                  if ((fields[prop] && fields[prop].optional) && targetProp === undefined) {
+                  return targetProp;
+                }
+                const cv = ct[kt].ctor(targetProp);
+                priv[prop] = cv;
+                return cv;
+              }
+            } else {
+              return target[prop];
+            }
+          },
+          set: function (target, prop, newval) {
+            const ct = ei[prop];
+
+            if (ct) {
+              priv[prop] = false;
+              target[prop] = ct[kf].ctor(newval);
+            } else {
+              target[prop] = newval;
+            }
+            return true;
+          },
+        };
+      }
+
+      return new CTWrapper(function (value) {
+        if (firstOrder(value)) {
+          return new Proxy(value, makeHandler({}));
+        } else {
+          // TODO: this error message is not always accurate
+          return signal_contract_violation(
+            value,
+	    swap,
+            blame_object,
+            `Object mismatch, expecting "${toString(fields)}", got "${toString(value)}"`
+          );
+        }
+      });
+    }
+
+    return {
+      t: mkWrapper(false),
+      f: mkWrapper(true),
+    };
+  });
+}
+
+/*---------------------------------------------------------------------*/
 /*    CTCoerce ...                                                     */
 /*---------------------------------------------------------------------*/
 function CTCoerce(obj, who) {
@@ -1363,6 +1487,7 @@ exports.RegExpCT = RegExpCT;
 
 exports.CT = CT;
 exports.CTObject = CTObject;
+exports.CTInstance = CTInstance;
 exports.CTInterface = CTObject;
 exports.CTOr = CTOr;
 exports.CTAnd = CTAnd;
