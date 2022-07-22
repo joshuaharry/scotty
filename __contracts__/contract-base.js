@@ -4,7 +4,7 @@
 /*    -------------------------------------------------------------    */
 /*    Author      :  manuel serrano                                    */
 /*    Creation    :  Tue Feb 18 17:19:39 2020                          */
-/*    Last change :  Fri Jul 22 08:55:34 2022 (serrano)                */
+/*    Last change :  Fri Jul 22 10:21:30 2022 (serrano)                */
 /*    Copyright   :  2020-22 manuel serrano                            */
 /*    -------------------------------------------------------------    */
 /*    Basic contract implementation                                    */
@@ -965,8 +965,7 @@ function CTObject(ctfields, ctprotofields = {}, clazz = false) {
       	return x instanceof clazz;
       }
     } else {
-        return false;
-      }
+      return false;
     }
   }
 
