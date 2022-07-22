@@ -1,25 +1,26 @@
-var CT = require("./contract-base.js");
+class Point {
+ x;
+ y;
+   
+ constructor(x, y) {
+      this.x = x;
+      this.y = y;
+   }
+   
+   toStr() {
+      return 0;
+   }
+   toNum() {
+      return this.x + this.y;
+   }
+}
 
-var originalModule = require("./__ORIGINAL_UNTYPED_MODULE__.js");
+function shift(p) {
+   return new Point(p.x + 1, p.y + 1);
+}
 
-var Point$ClassContract = CT.CTRec(() =>
-  CT.CTObject(
-    {
-      x: CT.numberCT,
-      y: CT.numberCT,
-    },
-    {
-      toNum: CT.CTFunction(Point$ClassContract, [], CT.numberCT),
-      toStr: CT.CTFunction(Point$ClassContract, [], CT.stringCT),
-    }
-  )
-);
-var PointContract = CT.CTClass(Point$ClassContract, [CT.numberCT, CT.numberCT]);
-var shiftContract = CT.CTFunction(
-  CT.trueCT,
-  [Point$ClassContract],
-  Point$ClassContract
-);
-module.exports = originalModule;
-module.exports.Point = PointContract.wrap(originalModule.Point);
-module.exports.shift = shiftContract.wrap(originalModule.shift);
+exports.Point = Point;
+exports.shift = shift;
+
+ 
+ 

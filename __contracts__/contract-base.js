@@ -1,9 +1,10 @@
+// -*-hopjs-parse-indent: 2 -*-
 /*=====================================================================*/
 /*    .../project/jscontract/scotty/__contracts__/contract-base.js     */
 /*    -------------------------------------------------------------    */
 /*    Author      :  manuel serrano                                    */
 /*    Creation    :  Tue Feb 18 17:19:39 2020                          */
-/*    Last change :  Thu Jul 21 19:45:10 2022 (serrano)                */
+/*    Last change :  Fri Jul 22 08:23:20 2022 (serrano)                */
 /*    Copyright   :  2020-22 manuel serrano                            */
 /*    -------------------------------------------------------------    */
 /*    Basic contract implementation                                    */
@@ -903,7 +904,7 @@ function CTArray(element, options) {
 /*---------------------------------------------------------------------*/
 /*    CTObject ...                                                     */
 /*---------------------------------------------------------------------*/
-function CTObject(ctfields, ctprotofields = {}) {
+function CTObject(ctfields, ctprotofields = {}, clazz = false) {
   let stringIndexContract = false,
     numberIndexContract = false;
   let fields = {};
@@ -945,21 +946,26 @@ function CTObject(ctfields, ctprotofields = {}) {
 	}
       }
 
-      for (let n in x) {
-        if (!(n in fields)) {
-          if (typeof n === "string" && !stringIndexContract) {
+      // test for regular JavaScript objects
+      if (!clazz) {
+        for (let n in x) {
+          if (!(n in fields)) {
+            if (typeof n === "string" && !stringIndexContract) {
+              return false;
+            }
+            if (typeof n === "number" && !numberIndexContract) {
+              return false;
+            }
+          } else if (Object.hasOwnProperty(x, n) === fields[n].prototype) {
             return false;
           }
-          if (typeof n === "number" && !numberIndexContract) {
-            return false;
-          }
-        } else if (Object.hasOwnProperty(x, n) === fields[n].prototype) {
-          return false;
         }
+        return true;
+      } else {
+        return false;
       }
-      return true;
     } else {
-      return false;
+      return x instanceof clazz;
     }
   }
 
