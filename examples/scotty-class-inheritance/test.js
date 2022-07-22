@@ -1,10 +1,11 @@
 
 const pt = require("./index.js");
 const Point = pt.Point;
+const Point3d = pt.Point3d;
 const shift = pt.shift;
  
 function test() {
-   const o = new Point3(5,10, 20);
+   const o = new Point3d(5,10, 20);
    const o2 = shift(o);
 
    console.log("o2=", o2);
