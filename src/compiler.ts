@@ -491,6 +491,9 @@ const typeContainsName = (name: string, chunk: ObjectChunk) => {
       TSArrayType(type: t.TSArrayType) {
         return loop(type.elementType);
       },
+      TSReadonlyArrayType(type: t.TSArrayType) {
+        return loop(type.elementType);
+      },
       TSParenthesizedType(type: t.TSParenthesizedType) {
         return loop(type.typeAnnotation);
       },
@@ -791,6 +794,9 @@ const depMap: DepMapper = {
   TSArrayType(type: t.TSArrayType) {
     return getTypeDependencies({hint: "flat", syntax: type.elementType});
   },
+  TSReadonlyArrayType(type: t.TSArrayType) {
+    return getTypeDependencies({hint: "flat", syntax: type.elementType});
+  },
 };
 
 const getDeps = (type: t.TSType): string[] => {
@@ -1021,6 +1027,9 @@ const makeReduceNode = (env: ContractGraph) => {
     Array(ref) {
       return unwrapTypeParams(ref, "CT.CTArray(%%contract%%)");
     },
+    ReadonlyArray(ref) {
+      return unwrapTypeParams(ref, "CT.CTArray(%%contract%%)");
+    },
     ArrayLike(ref) {
       return unwrapTypeParams(
         ref,
@@ -1081,6 +1090,11 @@ const makeReduceNode = (env: ContractGraph) => {
       return makeCtExpression("CT.undefinedCT");
     },
     TSArrayType(arr: t.TSArrayType) {
+      return template.expression(`CT.CTArray(%%contract%%)`)({
+        contract: mapFlat(arr.elementType),
+      });
+    },
+    TSReadonlyArrayType(arr: t.TSArrayType) {
       return template.expression(`CT.CTArray(%%contract%%)`)({
         contract: mapFlat(arr.elementType),
       });
@@ -1148,7 +1162,7 @@ const makeReduceNode = (env: ContractGraph) => {
   };
 
   const makeRestParameter = (rest: t.TSType): t.Expression => {
-    if (rest.type !== "TSArrayType")
+    if (rest.type !== "TSArrayType") 
       return template.expression(`{ contract: CT.anyCT, dotdotdot: true }`)({CT: t.identifier("CT")});
     return template.expression(`{ contract: %%contract%%, dotdotdot: true }`)({
       contract: mapFlat(rest.elementType),
