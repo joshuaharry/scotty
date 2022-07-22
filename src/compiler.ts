@@ -177,6 +177,7 @@ interface ObjectSyntax {
   types: ObjectRecord;
   isRecursive: boolean;
   prototypes?: ObjectRecord;
+  clazz?: string;
 }
 
 interface FlatTypescriptType {
@@ -707,7 +708,7 @@ const tokenMap: Record<string, TokenHandler> = {
         typeToMark: null,
         type: {
            hint: "object",
-           syntax: {types, prototypes, isRecursive: true},
+           syntax: {types, prototypes, isRecursive: true, clazz: name},
         },
         isSubExport: false,
         isMainExport: false,
@@ -1205,7 +1206,8 @@ const makeReduceNode = (env: ContractGraph) => {
                                 .join(", ")} },
                            { ${Object.keys(stx.prototypes)
                                 .map((key) => `${key}: %%${key}%%`)
-                                .join(", ")} })`;
+                                .join(", ")} },
+                           originalModule.${stx.clazz})`;
     } else {
        return `CT.CTObject({ ${Object.keys(stx.types)
                 .map((key) => `${key}: %%${key}%%`)
