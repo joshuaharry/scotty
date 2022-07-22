@@ -22,8 +22,8 @@ function shift(p) {
 class Point3d extends Point {
    z;
    
-   constructor(z) {
-      super();
+   constructor(x, y, z) {
+      super(x, y);
       this.z = z;
    }
    toNum() {
