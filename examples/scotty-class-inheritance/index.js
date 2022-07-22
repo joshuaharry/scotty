@@ -29,6 +29,7 @@ class Point3d extends Point {
    toNum() {
       return this.x + this.y + this.z;
    }
+}
       
 exports.Point = Point;
 exports.Point3d = Point3d;

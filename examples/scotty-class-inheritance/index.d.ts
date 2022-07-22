@@ -8,7 +8,7 @@ export class Point {
   toStr(): string;
 }
 
-export class Point extends Point3d {
+export class Point3d extends Point {
   z:number;
   
   constructor(x:number, y:number, z:number);

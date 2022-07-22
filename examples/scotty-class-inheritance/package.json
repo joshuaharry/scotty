@@ -1,5 +1,5 @@
 {
-   "name": "scotty-class-noinheritance",
+   "name": "scotty-class-inheritance",
    "files": [ "index.js" ],
    "main": "index.js",
    "scripts": {
