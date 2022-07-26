@@ -6,6 +6,8 @@ import {
   readFileSync,
   moveSync,
   writeFileSync,
+  writeSync,
+  fsyncSync
 } from "fs-extra";
 import { execSync } from "child_process";
 import path from "path";
@@ -22,6 +24,7 @@ command:
   identity-mode       Compile types to contracts in identity mode.
   proxy-mode          Compile types to contracts in proxy mode.
   full-mode           Compile types to contracts in full mode.
+  compile-only        Compile types to stdout.
 `);
   process.exit(exitCode);
 };
@@ -110,6 +113,24 @@ const compileAndSwap = (mode: Mode) => {
   copySync(CONTRACTS_PATH, mainDirectory, { recursive: true });
 };
 
+function compileOnly() {
+  const mainPath = require.resolve(process.cwd());
+  const seps = ORIGINAL_DIRECTORY.split(path.sep)
+  const packageName = seps[seps.length - 1];
+  const mainDirectory = path.dirname(mainPath);
+  if (!existsSync(mainPath)) {
+    console.error(`Fatal error: Could not find file ${mainPath}`);
+    process.exit(1);
+  }
+  const typePath = path.join(DT_PATH, "types", packageName, "index.d.ts");
+  if (!existsSync(typePath)) {
+    console.error(`Fatal error: Could not types for ${packageName}`);
+    process.exit(1);
+  }
+  const code = replaceImport(compileContracts(), "full-mode");
+  writeSync(process.stdout.fd, code);
+};
+
 const parseArgv = (argv: string[]) => {
   const el = argv[0];
   switch (el) {
@@ -126,6 +147,8 @@ const parseArgv = (argv: string[]) => {
     case "full-mode": {
       return compileAndSwap(el);
     }
+    case "compile-only":
+      return compileOnly();
     default: {
       console.error("Fatal error: Could not recognize command.\n");
       return help(1);

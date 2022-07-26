@@ -41,6 +41,7 @@ command:
   identity-mode       Compile types to contracts in identity mode.
   proxy-mode          Compile types to contracts in proxy mode.
   full-mode           Compile types to contracts in full mode.
+  compile-only        Compile types to stdout.
 
 You need to run `scotty` inside an existing JavaScript package. If operating manually,
 the workflow would look something like:
