@@ -954,6 +954,9 @@ const exportContracts = (nodes: ContractNode[]): t.Statement[] => {
 const makeAnyCt = (_?: t.TSType) =>
   template.expression(`CT.anyCT`)({CT: t.identifier("CT")});
 
+const makeUnsupportedCt = (_?: t.TSType) =>
+  template.expression(`CT.unsupportedCT`)({CT: t.identifier("CT")});
+
 const makeCtExpression = (name: string): t.Expression =>
   template.expression(name)({CT: t.identifier("CT")});
 
@@ -996,7 +999,7 @@ const makeReduceNode = (env: ContractGraph) => {
       `We gave up on this type: `,
       prettier.format(JSON.stringify(ref), {parser: "json"})
     );
-    return makeAnyCt();
+    return makeUnsupportedCt();
   };
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

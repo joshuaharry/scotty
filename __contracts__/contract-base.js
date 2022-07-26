@@ -4,7 +4,7 @@
 /*    -------------------------------------------------------------    */
 /*    Author      :  manuel serrano                                    */
 /*    Creation    :  Tue Feb 18 17:19:39 2020                          */
-/*    Last change :  Fri Jul 22 13:52:03 2022 (serrano)                */
+/*    Last change :  Tue Jul 26 09:10:14 2022 (serrano)                */
 /*    Copyright   :  2020-22 manuel serrano                            */
 /*    -------------------------------------------------------------    */
 /*    Basic contract implementation                                    */
@@ -1466,6 +1466,7 @@ const RegExpCT = new CTFlat(isRegExp);
 /*    exports                                                          */
 /*---------------------------------------------------------------------*/
 exports.anyCT = trueCT;
+exports.unsupportedCT = trueCT;
 exports.voidCT = undefinedCT;
 exports.booleanCT = booleanCT;
 exports.objectCT = objectCT;
