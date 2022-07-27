@@ -930,7 +930,7 @@ function CTArray(element, options) {
 /*---------------------------------------------------------------------*/
 /*    CTObject ...                                                     */
 /*---------------------------------------------------------------------*/
-function CTObject(ctfields, ctprotofields = {}, clazz = false) {
+function CTObject(ctfields, ctprotofields = {}) {
   let stringIndexContract = false,
     numberIndexContract = false;
   let fields = {};
@@ -973,23 +973,19 @@ function CTObject(ctfields, ctprotofields = {}, clazz = false) {
       }
 
       // test for regular JavaScript objects
-      if (!clazz) {
-        for (let n in x) {
-          if (!(n in fields)) {
-            if (typeof n === "string" && !stringIndexContract) {
-              return false;
-            }
-            if (typeof n === "number" && !numberIndexContract) {
-              return false;
-            }
-          } else if (Object.hasOwnProperty(x, n) === fields[n].prototype) {
+      for (let n in x) {
+        if (!(n in fields)) {
+          if (typeof n === "string" && !stringIndexContract) {
             return false;
           }
+          if (typeof n === "number" && !numberIndexContract) {
+            return false;
+          }
+        } else if (Object.hasOwnProperty(x, n) === fields[n].prototype) {
+          return false;
         }
-        return true;
-      } else {
-      	return x instanceof clazz;
       }
+      return true;
     } else {
       return false;
     }
