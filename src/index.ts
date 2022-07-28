@@ -41,19 +41,19 @@ const validate = () => {
   try {
     if (!existsSync(DT_PATH)) {
       console.error(
-        "Fatal error: Could not find DefinitelyTyped in ~/.scotty/DefinitelyTyped."
+        "*** SCOTTY-FATAL-ERROR: Could not find DefinitelyTyped in ~/.scotty/DefinitelyTyped."
       );
       console.error("Try cloning the repository.");
       process.exit(1);
     }
     if (!existsSync(CONTRACTS_PATH)) {
-      console.error("Fatal error: Could not find contracts librasry in ~/.scotty/contracts");
+      console.error("*** SCOTTY-FATAL-ERROR: Could not find contracts librasry in ~/.scotty/contracts");
       console.error("Try making that directory copying the files in __contracts__ there directly.");
       process.exit(1);
     }
     if (!existsSync(COMMIT_PATH)) {
       console.error(
-        "Fatal error: Could not find the commit to check out in ~/.scotty/DefinitelyTyped/commit."
+        "*** SCOTTY-FATAL-ERROR: Could not find the commit to check out in ~/.scotty/DefinitelyTyped/commit."
       );
       console.error(
         "Try creating the file with the commit you would like to explore."
@@ -66,7 +66,7 @@ const validate = () => {
     console.log("Validation successful.");
     process.chdir(ORIGINAL_DIRECTORY);
   } catch (err) {
-    console.error("Fatal error while validating:", err);
+    console.error("*** SCOTTY-FATAL-ERROR: while validating:", err);
     process.exit(1);
   }
 };
@@ -92,12 +92,12 @@ const compileAndSwap = (mode: Mode) => {
   const packageName = seps[seps.length - 1];
   const mainDirectory = path.dirname(mainPath);
   if (!existsSync(mainPath)) {
-    console.error(`Fatal error: Could not find file ${mainPath}`);
+    console.error(`*** SCOTTY-FATAL-ERROR: Could not find file ${mainPath}`);
     process.exit(1);
   }
   const typePath = path.join(DT_PATH, "types", packageName, "index.d.ts");
   if (!existsSync(typePath)) {
-    console.error(`Fatal error: Could not types for ${packageName}`);
+    console.error(`*** SCOTTY-FATAL-ERROR: Could not find types for ${packageName}, missing file: ${typePath}`);
     process.exit(1);
   }
   copySync(typePath, path.join(process.cwd(), 'index.d.ts'));
@@ -119,12 +119,12 @@ function compileOnly() {
   const packageName = seps[seps.length - 1];
   const mainDirectory = path.dirname(mainPath);
   if (!existsSync(mainPath)) {
-    console.error(`Fatal error: Could not find file ${mainPath}`);
+    console.error(`*** SCOTTY-FATAL-ERROR: Could not find file ${mainPath}`);
     process.exit(1);
   }
   const typePath = path.join(DT_PATH, "types", packageName, "index.d.ts");
   if (!existsSync(typePath)) {
-    console.error(`Fatal error: Could not types for ${packageName}`);
+    console.error(`*** SCOTTY-FATAL-ERROR: Could not types for ${packageName}`);
     process.exit(1);
   }
   const code = replaceImport(compileContracts(), "full-mode");
@@ -150,7 +150,7 @@ const parseArgv = (argv: string[]) => {
     case "compile-only":
       return compileOnly();
     default: {
-      console.error("Fatal error: Could not recognize command.\n");
+      console.error("*** SCOTTY-FATAL-ERROR: Could not recognize command.\n");
       return help(1);
     }
   }

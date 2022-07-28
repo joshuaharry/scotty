@@ -974,6 +974,10 @@ const nameReference = (refName: string): t.Expression => {
   });
 };
 
+const nodejsReference = (refName: string): t.Expression => {
+  return  makeCtExpression(`CT.nodejsCT("${refName}")`);
+};
+
 const classReference = (refName: string): t.Expression => {
   return template.expression(`%%name%%`)({
     name: classContractTypeName(refName) + "Contract",
@@ -1007,7 +1011,7 @@ const makeReduceNode = (env: ContractGraph) => {
     const typeName = getTypeName(ref.typeName);
     if (classDeclarations.has(typeName)) return classReference(typeName);
     if (typeIsInEnvironment(typeName)) return nameReference(typeName);
-    console.error("handleUnknownReference typeName=", typeName);
+    if (typeName.match(/NodeJS[.]/)) return nodejsReference(typeName);
     return giveUpOnReference(ref);
   };
 
@@ -1073,6 +1077,12 @@ const makeReduceNode = (env: ContractGraph) => {
     },
     Error(_) {
       return makeCtExpression("CT.errorCT");
+    },
+    Event(_) {
+      return makeCtExpression("CT.eventCT");
+    },
+    Buffer(_) {
+      return makeCtExpression("CT.bufferCT");
     },
   };
 

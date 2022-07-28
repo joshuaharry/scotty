@@ -4,7 +4,7 @@
 /*    -------------------------------------------------------------    */
 /*    Author      :  manuel serrano                                    */
 /*    Creation    :  Tue Feb 18 17:19:39 2020                          */
-/*    Last change :  Tue Jul 26 09:10:14 2022 (serrano)                */
+/*    Last change :  Tue Jul 26 12:18:25 2022 (serrano)                */
 /*    Copyright   :  2020-22 manuel serrano                            */
 /*    -------------------------------------------------------------    */
 /*    Basic contract implementation                                    */
@@ -128,6 +128,10 @@ function predToString(pred) {
     return "isObject";
   } else if (pred === isError) {
     return "isError";
+  } else if (pred === isEvent) {
+    return "isEvent";
+  } else if (pred === isBuffer) {
+    return "isBuffer";
   } else {
     return pred.toString();
   }
@@ -1412,14 +1416,17 @@ function isUndefined(o) {
 function isError(o) {
   return o instanceof Error;
 }
+function isEvent(o) {
+  return o instanceof Event;
+}
+function isBuffer(o) {
+  return o instanceof Buffer;
+}
 function True(o) {
   return true;
 }
 function isArrayBuffer(o) {
   return o instanceof ArrayBuffer;
-}
-function isBuffer(o) {
-  return o instanceof Buffer;
 }
 function isStringC(o) {
   return o instanceof String;
@@ -1452,6 +1459,7 @@ const falseCT = new CTFlat((o) => false);
 const arrayBufferCT = new CTFlat(isArrayBuffer);
 const undefinedCT = new CTFlat(isUndefined);
 const errorCT = new CTFlat(isError);
+const eventCT = new CTFlat(isEvent);
 const nullCT = new CTFlat(isNull);
 const bufferCT = new CTFlat(isBuffer);
 const StringCT = new CTFlat(isStringC);
@@ -1461,6 +1469,58 @@ const SymbolCT = new CTFlat(isSymbolC);
 const ObjectCT = new CTFlat(isObjectC);
 const BigIntCT = new CTFlat(isBigInt);
 const RegExpCT = new CTFlat(isRegExp);
+
+/*---------------------------------------------------------------------*/
+/*    On demand nodejs types                                           */
+/*---------------------------------------------------------------------*/
+const nodejsCT = {};
+
+function makeNodejsCT(name, pkg) {
+  return new CTFlat(o => o instanceof require(pkg)[name]);
+}
+
+function addNodejsCT(name) {
+  switch (name) {
+    case "NodeJS.WritableStream": {
+      	nodejsCT[name] = makeNodejsCT("WritableStream", "stream");
+      	break;
+      }
+      
+    case "NodeJS.ReadableStream": {
+      	nodejsCT[name] = makeNodejsCT("ReadableStream", "stream");
+      	break;
+      }
+	
+    case "NodeJS.ReadWriteStream": {
+      	nodejsCT[name] = makeNodejsCT("ReadWriteStream", "stream");
+      	break;
+      }
+	
+    case "NodeJS.ReadStream": {
+      	nodejsCT[name] = makeNodejsCT("ReadStream", "stream");
+      	break;
+      }
+	
+    case "NodeJS.WriteStream": {
+      	nodejsCT[name] = makeNodejsCT("WriteStream", "stream");
+      	break;
+      }
+	
+    case "NodeJS.ErrnoException": {
+      	nodejsCT[name] = new CTFlat(o => o instanceof Error);
+      	break;
+      }
+	
+    case "NodeJS.EventEmitter": {
+      	nodejsCT[name] = makeNodejsCT("EventEmitter", "event");
+      	break;
+      }
+	
+    default: 
+      console.error("Don't know builtin Nodejs type: " + name);
+      nodejsCT[name] = trueCT;
+  }
+};
 
 /*---------------------------------------------------------------------*/
 /*    exports                                                          */
@@ -1474,6 +1534,7 @@ exports.stringCT = stringCT;
 exports.trueCT = trueCT;
 exports.undefinedCT = undefinedCT;
 exports.errorCT = errorCT;
+exports.eventCT = eventCT;
 exports.numberCT = numberCT;
 exports.arrayBufferCT = arrayBufferCT;
 exports.nullCT = nullCT;
@@ -1507,6 +1568,10 @@ exports.isString = isString;
 exports.isBoolean = isBoolean;
 exports.isNumber = isNumber;
 exports.True = True;
+
+exports.nodejsCT = function(name) {
+  return nodejsCT[name] || addNodejsCT(name);
+}
 
 // exported for the test suite only
 exports.__topsort = topsort;
