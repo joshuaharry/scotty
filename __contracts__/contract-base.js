@@ -4,7 +4,7 @@
 /*    -------------------------------------------------------------    */
 /*    Author      :  manuel serrano                                    */
 /*    Creation    :  Tue Feb 18 17:19:39 2020                          */
-/*    Last change :  Tue Jul 26 12:18:25 2022 (serrano)                */
+/*    Last change :  Wed Jul 27 08:02:14 2022 (serrano)                */
 /*    Copyright   :  2020-22 manuel serrano                            */
 /*    -------------------------------------------------------------    */
 /*    Basic contract implementation                                    */
@@ -147,10 +147,9 @@ function fixArity(f) {
 /*---------------------------------------------------------------------*/
 /*    CTFunction ...                                                   */
 /*---------------------------------------------------------------------*/
-function CTFunction(self, domain, range) {
+function CTFunctionOrClass(self, domain, range, mode) {
   const arity = domain.length;
-  let minarity = arity,
-    maxarity = arity;
+  let minarity = arity, maxarity = arity;
 
   if (!(domain instanceof Array)) {
     throw new ContractError("Illegal domain: " + domain);
@@ -232,6 +231,14 @@ function CTFunction(self, domain, range) {
       const di1_wrapper = coerced_args.length > 1 ? dis[1][disk] : undefined;
       const handler = {
         apply: function (target, self, args) {
+	  if (mode !== "function") {
+            return signal_contract_violation(
+              target,
+	      !swap,
+              blame_object,
+              "Class used as a function (apply)").apply(self, args);
+	  
+	  }
           if (args.length === arity)
             switch (args.length) {
               case 0:
@@ -279,6 +286,14 @@ function CTFunction(self, domain, range) {
           }
         },
         construct: function(target, args, newtarget) {
+	  if (mode !== "class") {
+            return signal_contract_violation(
+              target,
+	      !swap,
+              blame_object,
+              "Function used as a class (new)").apply(self, args);
+	  
+	  }
           if (args.length === arity)
             switch (args.length) {
               case 0:
@@ -627,8 +642,15 @@ function find_depended_on(domain) {
 /*---------------------------------------------------------------------*/
 /*    CTFunction ...                                                   */
 /*---------------------------------------------------------------------*/
+function CTFunction(self, domain, range) {
+  return CTFunctionOrClass(self, domain, True, "function");
+}
+
+/*---------------------------------------------------------------------*/
+/*    CTClass ...                                                      */
+/*---------------------------------------------------------------------*/
 function CTClass(self, domain) {
-   return CTFunction(self, domain, True);
+  return CTFunctionOrClass(self, domain, True, "class");
 }
 
 /*---------------------------------------------------------------------*/
