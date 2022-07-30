@@ -640,7 +640,7 @@ function find_depended_on(domain) {
 }
 
 /*---------------------------------------------------------------------*/
-/*    CTFunction ...                                                   */
+/*    CTClass ...                                                      */
 /*---------------------------------------------------------------------*/
 function CTFunction(self, domain, range) {
   return CTFunctionOrClass(self, domain, True, "function");
@@ -930,10 +930,13 @@ function CTArray(element, options) {
 /*---------------------------------------------------------------------*/
 /*    CTObject ...                                                     */
 /*---------------------------------------------------------------------*/
+// when clazz is false, then this ensures that the 
+// object has exactly the given fields (no more)
+// when clazz is a 
 function CTObject(ctfields, ctprotofields = {}) {
   let stringIndexContract = false,
-    numberIndexContract = false;
-  let fields = {};
+      numberIndexContract = false,
+      fields = {};
 
   for (let k in ctfields) {
     const p = ctfields[k];
@@ -1071,10 +1074,13 @@ function CTObject(ctfields, ctprotofields = {}) {
 /*---------------------------------------------------------------------*/
 /*    CTInstance ...                                                   */
 /*---------------------------------------------------------------------*/
+// same as ctobject, except that extra fields are allowed.
+// the result of CTInstance is passed as the `self` argument
+// to CTClass when the type declaration has `constructor` in it
 function CTInstance(ctfields, ctprotofields, clazz) {
   let stringIndexContract = false,
-    numberIndexContract = false;
-  let fields = {};
+      numberIndexContract = false,
+      fields = {};
 
   for (let k in ctfields) {
     const p = ctfields[k];

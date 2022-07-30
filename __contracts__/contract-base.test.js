@@ -1057,6 +1057,341 @@ assert.throws(
 );
 
 /*---------------------------------------------------------------------*/
+/*    CTInstance                                                       */
+/*---------------------------------------------------------------------*/
+assert.ok(
+  (() => {
+    const tree = CT.CTInstance({},{},Object);
+    const o = tree.wrap({});
+    return true;
+  })(),
+  "ctobject.1"
+);
+assert.throws(
+  () => {
+    const tree = CT.CTInstance({ l: CT.isString, r: CT.isObject },{},Object);
+    const o = tree.wrap({ l: "x", r: undefined });
+    o.l;
+    o.r;
+  },
+  /blaming: pos/,
+  "ctobject.2"
+);
+assert.ok(
+  (() => {
+    const tree = CT.CTInstance({ l: CT.isString, r: CT.isNumber },{},Object);
+    const o = tree.wrap({ l: "x", r: 3 });
+    return o.l === "x" && o.r === 3;
+  })(),
+  "ctobject.3"
+);
+assert.ok(
+  (() => {
+    const person = CT.CTInstance({
+      id: CT.isNumber,
+      prop: { contract: CT.CTOr(CT.isString, CT.isBoolean), index: "string" },
+    },{},Object);
+    const o = person.wrap({
+      id: 23,
+      name: "foo",
+      firstname: "bar",
+      alive: true,
+    });
+    return o.id === 23 && o.name === "foo" && o.alive;
+  })(),
+  "ctobject.4"
+);
+assert.throws(
+  () => {
+    const person = CT.CTInstance({
+      id: CT.isNumber,
+      prop: { contract: CT.CTOr(CT.isString, CT.isBoolean), index: "string" },
+    },{},Object);
+    const o = person.wrap({ id: 23, name: "foo", firstname: "bar", alive: 23 });
+    return o.id === 23 && o.name === "foo" && o.alive;
+  },
+  /CTOr no arguments applied.*\n.*blaming: pos/,
+  "ctobject.index"
+);
+assert.ok(
+  (() => {
+    const person = CT.CTInstance({
+      id: CT.isNumber,
+      prop: { contract: CT.CTOr(CT.isString, CT.isBoolean), index: "number" },
+    },{},Object);
+    const o = person.wrap({ id: 23, name: "foo", firstname: "bar" });
+    return o.id === 23 && o.name === "foo";
+  })()
+);
+
+assert.ok(
+  (() => {
+    const example = CT.CTInstance({
+      id: {
+        contract: CT.numberCT,
+        optional: true,
+      },
+      name: {
+        contract: CT.stringCT,
+        optional: true,
+      },
+    },{},Object);
+    const exampleWrapped = example.wrap({});
+    return Object.keys(exampleWrapped).length === 0;
+  })()
+);
+
+assert.ok(
+  (() => {
+    const fn = (obj) => {
+      obj.name;
+      return true;
+    };
+    const fnContract = CT.CTFunction(
+      CT.trueCT,
+      [
+        CT.CTInstance({
+          name: {
+            contract: CT.stringCT,
+            optional: true,
+          },
+        },{},Object),
+      ],
+      CT.booleanCT
+    );
+    const fnWithCt = fnContract.wrap(fn);
+    return fnWithCt({});
+  })()
+);
+
+{
+  const example = CT.CTInstance({
+    id: {
+      contract: CT.numberCT,
+      optional: true,
+    },
+    name: {
+      contract: CT.stringCT,
+      optional: true,
+    },
+  },{},Object);
+  const exampleWrapped = example.wrap({});
+  assert.ok(exampleWrapped.id === undefined);
+}
+
+assert.ok(
+  (() => {
+    const fn = ({ name, nickName }) => name || nickName || "neither";
+    const fnContract = CT.CTFunction(
+      CT.trueCT,
+      [
+        CT.CTInstance({
+          name: {
+            contract: CT.stringCT,
+            optional: true,
+          },
+          nickName: {
+            contract: CT.stringCT,
+            optional: true,
+          },
+        },{},Object),
+      ],
+      CT.stringCT
+    );
+    const fnWithCt = fnContract.wrap(fn);
+    // I think this should work...
+    return fnWithCt({ name: "hello" }) === "hello";
+  })()
+);
+
+assert.ok(
+  (() => {
+    const example = CT.CTInstance({
+      id: {
+        contract: CT.numberCT,
+        optional: true,
+      },
+      name: {
+        contract: CT.stringCT,
+        optional: true,
+      },
+    },{},Object);
+    const exampleWrapped = example.wrap({});
+    return exampleWrapped.id === undefined;
+  })()
+);
+
+assert.ok(
+  (() => {
+    const example = CT.CTInstance({
+      id: {
+        contract: CT.numberCT,
+        optional: true,
+      },
+      name: {
+        contract: CT.stringCT,
+        optional: true,
+      },
+    },{},Object);
+    const exampleContract = example.wrap({ id: 3 });
+    return exampleContract.id === 3;
+  })()
+);
+
+assert.ok(
+  (() => {
+    const example = CT.CTInstance({
+      id: {
+        contract: CT.numberCT,
+        optional: true,
+      },
+      name: {
+        contract: CT.stringCT,
+        optional: true,
+      },
+    },{},Object);
+    const exampleContract = example.wrap({ name: "hi" });
+    return exampleContract.name === "hi";
+  })()
+);
+
+assert.ok(
+  (() => {
+    const example = CT.CTInstance({
+      id: {
+        contract: CT.numberCT,
+        optional: true,
+      },
+      name: {
+        contract: CT.stringCT,
+        optional: true,
+      },
+    },{},Object);
+    const exampleContract = example.wrap({ id: 3, name: "hi" });
+    return exampleContract.name === "hi" && exampleContract.id === 3;
+  })()
+);
+
+// check errors happen at the right time
+assert.throws(
+  () => {
+    CT.CTInstance({ x: not_a_contract }, {}, Object);
+  },
+  /CTObject: not a contract/,
+  "ctobject.arg-check"
+);
+
+assert.throws(
+  () => {
+    CT.CTInstance({ x: CT.isString, y: CT.isObject },{},Object).wrap({});
+  },
+  /Object mismatch, expecting "{x, y}"/,
+  "ctojbect.tostring"
+);
+
+// check function and object
+assert.ok(
+  (() => {
+    const fn = ({ name }) => name || "Bob";
+    const fnContract = CT.CTFunction(
+      CT.trueCT,
+      [
+        CT.CTInstance({
+          name: {
+            contract: CT.stringCT,
+            optional: true,
+          },
+        },{},Object),
+      ],
+      CT.stringCT
+    );
+    const fnWithCt = fnContract.wrap(fn);
+    return fnWithCt({ name: "hello" }) === "hello";
+  })()
+);
+
+// constructors (new)
+assert.ok(
+   (() => {
+      function CTOR(x) {
+        this.x = x;
+      }
+
+      const cto = CT.CTInstance({ x: CT.isNumber },{},Object);
+      const ctf = CT.CTFunction(cto, [CT.isNumber], CT.trueCT);
+      const CTCTOR = ctf.wrap(CTOR);
+      const o1 = new CTCTOR(1);
+      return o1.x;
+   })(),
+   "ctor.1"
+);
+
+assert.throws(
+   () => {
+      function CTOR(x) {
+        this.x = x;
+      }
+      CTOR.prototype.y = 20;
+
+      const cto = CT.CTInstance({ x: CT.isNumber },{},Object);
+      const ctf = CT.CTFunction(cto, [CT.isNumber], CT.trueCT);
+      const CTCTOR = ctf.wrap(CTOR);
+      const o1 = new CTCTOR("1");
+      return o1.x;
+   },
+   "ctor.2"
+);
+
+assert.throws(
+   () => {
+      function CTOR(x) {
+        this.x = x;
+      }
+      CTOR.prototype.y = 20;
+
+      const cto = CT.CTInstance({ x: CT.isNumber }, {}, Object);
+      const ctf = CT.CTFunction(cto, [CT.isString], CT.trueCT);
+      const CTCTOR = ctf.wrap(CTOR);
+      const o1 = new CTCTOR("1");
+      return o1.x;
+   },
+   "ctor.2"
+);
+
+// object with prototype chains
+assert.ok(
+   (() => {
+      function CTOR(x) {
+        this.x = x;
+      }
+      CTOR.prototype.y = 20;
+
+      const cto = CT.CTInstance({ x: CT.isNumber }, { y: CT.isNumber }, Object);
+      const ctf = CT.CTFunction(cto, [CT.isNumber], CT.trueCT);
+      const CTCTOR = ctf.wrap(CTOR);
+      const o1 = new CTCTOR(1);
+      return o1.x + o1.y;
+   })(),
+   "prototype.1"
+);
+
+assert.throws(
+   () => {
+      function CTOR(x) {
+        this.x = x;
+      }
+      CTOR.prototype.y = 20;
+
+      const cto = CT.CTInstance({ x: CT.isNumber }, {}, Object);
+      const ctf = CT.CTFunction(cto, [CT.isNumber], CT.trueCT);
+      const CTCTOR = ctf.wrap(CTOR);
+      const o1 = new CTCTOR(1);
+      return o1.x + o1.y;
+   },
+   "prototype.2"
+);
+
+/*---------------------------------------------------------------------*/
 /*    CTRec                                                            */
 /*---------------------------------------------------------------------*/
 assert.throws(
