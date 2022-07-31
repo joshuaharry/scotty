@@ -7,7 +7,8 @@ import {
   moveSync,
   writeFileSync,
   writeSync,
-  fsyncSync
+  fsyncSync,
+  unlinkSync
 } from "fs-extra";
 import { execSync } from "child_process";
 import path from "path";
@@ -111,7 +112,28 @@ const compileAndSwap = (mode: Mode) => {
   }
   writeFileSync(mainPath, code);
   copySync(CONTRACTS_PATH, mainDirectory, { recursive: true });
+  replaceLinter(mainDirectory, "eslint");
+  replaceLinter(mainDirectory, "jshint");
+  replaceLinter(mainDirectory, "semistandard");
+  replaceLinter(mainDirectory, "standard");
+  replaceLinter(mainDirectory, "xo");
 };
+
+function replaceLinter(mainDirectory : string, linter : string) {
+    console.log("replaceLinter");
+    const toReplace = path.join(
+	mainDirectory,
+	"node_modules",
+	".bin",
+	linter
+    );
+    if (!existsSync(toReplace)) return;
+    unlinkSync(toReplace);
+    writeFileSync(toReplace,
+		  "#!/bin/sh\necho ignore " + linter + "\n",
+		  { mode : "755" });
+    console.log("replaceLinter done", toReplace);
+}
 
 function compileOnly() {
   const mainPath = require.resolve(process.cwd());
