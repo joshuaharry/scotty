@@ -120,7 +120,7 @@ const compileAndSwap = (mode: Mode) => {
 };
 
 function replaceLinter(mainDirectory : string, linter : string) {
-    console.log("replaceLinter");
+    console.log("replaceLinter " + linter);
     const toReplace = path.join(
 	mainDirectory,
 	"node_modules",
