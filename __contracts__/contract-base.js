@@ -4,7 +4,7 @@
 /*    -------------------------------------------------------------    */
 /*    Author      :  manuel serrano                                    */
 /*    Creation    :  Tue Feb 18 17:19:39 2020                          */
-/*    Last change :  Wed Jul 27 08:02:14 2022 (serrano)                */
+/*    Last change :  Wed Aug  3 09:37:16 2022 (serrano)                */
 /*    Copyright   :  2020-22 manuel serrano                            */
 /*    -------------------------------------------------------------    */
 /*    Basic contract implementation                                    */
@@ -17,8 +17,10 @@
 /*---------------------------------------------------------------------*/
 function toStr(o) {
    if (typeof o === "object") {
-      return o.constructor.name;
-   } else {
+    return o.constructor.name;
+  } if (o === "undefined") {
+    return "undefined";
+  } else {
       return o.toString();
    }
 }

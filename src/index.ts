@@ -113,6 +113,7 @@ const compileAndSwap = (mode: Mode) => {
   writeFileSync(mainPath, code);
   copySync(CONTRACTS_PATH, mainDirectory, { recursive: true });
   replaceLinter(mainDirectory, "eslint");
+  replaceLinter(mainDirectory, "jest");
   replaceLinter(mainDirectory, "jshint");
   replaceLinter(mainDirectory, "semistandard");
   replaceLinter(mainDirectory, "standard");
