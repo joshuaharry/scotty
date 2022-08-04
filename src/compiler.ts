@@ -249,6 +249,14 @@ const getParameterTypes = (els: ParameterChild[]): FunctionParameter[] =>
     };
   });
 
+const implicitCtorTypes = (): FunctionParameter[] =>
+  // implicit class contructor range
+  [{
+    type: t.tsAnyKeyword(),
+    isRestParameter: true,
+    isOptional: true,
+  }];
+
 type InterfaceChild =
   | t.TSPropertySignature
   | t.TSIndexSignature
@@ -703,6 +711,7 @@ const tokenMap: Record<string, TokenHandler> = {
     const ctor = <t.ClassMethod>body.find(el => el.type === "TSDeclareMethod" && el.kind === "constructor");
     
     classDeclarations.set(name, el);
+    
     return [
       // the class
       {
@@ -724,12 +733,12 @@ const tokenMap: Record<string, TokenHandler> = {
           hint: "class",
           syntax: {
              self: typeReference(className),
-             domain: getParameterTypes(ctor.params),
+             domain: ctor ? getParameterTypes(ctor.params) : implicitCtorTypes(),
           }
         },
         isSubExport: false,
         isMainExport: false,
-        existsInJs: true,
+        existsInJs: ctor && !el.abstract,
       }
     ];
   }
