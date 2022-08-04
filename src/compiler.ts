@@ -1244,9 +1244,9 @@ const makeReduceNode = (env: ContractGraph) => {
                                   .join(", ")} },
                              originalModule.${stx.clazz})`;
     } else {
-       return `CT.CTObject({ ${Object.keys(stx.types)
+       return `CT.CTRec(() => CT.CTObject({ ${Object.keys(stx.types)
                 .map((key) => `${key}: %%${key}%%`)
-                .join(", ")} })`;
+                .join(", ")} }))`;
     }
   }
 
