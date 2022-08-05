@@ -1242,7 +1242,7 @@ const makeReduceNode = (env: ContractGraph) => {
                              { ${Object.keys(stx.prototypes)
                                   .map((key) => `${key}: %%${key}%%`)
                                   .join(", ")} },
-                             originalModule.${stx.clazz})`;
+                             (originalModule.${stx.clazz} || originalModule))`;
     } else {
        return `CT.CTRec(() => CT.CTObject({ ${Object.keys(stx.types)
                 .map((key) => `${key}: %%${key}%%`)
