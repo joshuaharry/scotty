@@ -910,7 +910,7 @@ const getContractGraph = (tokens: ContractToken[]): ContractGraph => {
 
 // Boundary Management - Exports, Requires {{{
 const getFinalName = (name: string): string => {
-  if (false && classDeclarations.has(name)) { 
+  if (classDeclarations.has(name)) { 
      return classContractTypeName(name);
   } else {
      return name.includes(".")

@@ -4,7 +4,7 @@
 /*    -------------------------------------------------------------    */
 /*    Author      :  manuel serrano                                    */
 /*    Creation    :  Tue Feb 18 17:19:39 2020                          */
-/*    Last change :  Thu Aug  4 07:27:54 2022 (serrano)                */
+/*    Last change :  Fri Aug  5 09:25:26 2022 (serrano)                */
 /*    Copyright   :  2020-22 manuel serrano                            */
 /*    -------------------------------------------------------------    */
 /*    Basic contract implementation                                    */
@@ -17,7 +17,7 @@
 /*---------------------------------------------------------------------*/
 function toStr(o) {
    if (typeof o === "object") {
-    return o?.constructor.name;
+    return (o.constructor ? o.constructor.name : "object");
   } else if (o === undefined) {
     return "undefined";
   } else {
@@ -1077,6 +1077,10 @@ function CTInstance(ctfields, ctprotofields, clazz) {
   let stringIndexContract = false,
     numberIndexContract = false;
   let fields = {};
+
+  if (!clazz) {
+    throw new ContractError("Illegal class");
+  }
 
   for (let k in ctfields) {
     const p = ctfields[k];
