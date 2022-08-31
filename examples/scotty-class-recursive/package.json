@@ -1,0 +1,8 @@
+{
+   "name": "scotty-class-recursive",
+   "files": [ "index.js" ],
+   "main": "index.js",
+   "scripts": {
+     "test": "node test.js"
+   }
+}
