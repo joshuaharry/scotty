@@ -287,15 +287,7 @@ function CTFunctionOrClass(self, domain, range, mode) {
             ).apply(self, args);
           }
         },
-        construct: function(target, args, newtarget) {
-	  if (mode !== "class") {
-            return signal_contract_violation(
-              target,
-	      !swap,
-              blame_object,
-              "Function used as a class (new)").apply(self, args);
-	  
-	  }
+        construct: function(target, args) {
           if (args.length === arity)
             switch (args.length) {
               case 0:
