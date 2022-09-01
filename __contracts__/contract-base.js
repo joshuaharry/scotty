@@ -645,7 +645,7 @@ function find_depended_on(domain) {
 /*    CTFunction ...                                                   */
 /*---------------------------------------------------------------------*/
 function CTFunction(self, domain, range) {
-  return CTFunctionOrClass(self, domain, True, "function");
+  return CTFunctionOrClass(self, domain, range, "function");
 }
 
 /*---------------------------------------------------------------------*/
