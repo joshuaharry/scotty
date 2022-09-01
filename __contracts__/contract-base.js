@@ -975,7 +975,7 @@ function CTObject(ctfields, ctprotofields = {}) {
           if (typeof n === "number" && !numberIndexContract) {
             return false;
           }
-        } else if (Object.hasOwnProperty(x, n) === fields[n].prototype) {
+        } else if (x.hasOwnProperty(n) === fields[n].prototype) {
           return false;
         }
       }

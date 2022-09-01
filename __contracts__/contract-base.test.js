@@ -1053,8 +1053,26 @@ assert.throws(
       const o1 = new CTCTOR(1);
       return o1.x + o1.y;
    },
+   /blaming: pos/,
    "prototype.2"
 );
+
+assert.throws(
+   () => {
+      function CTOR(x) {
+        this.x = x;
+      }
+
+      const cto = CT.CTObject({}, { x: CT.isNumber });
+      const ctf = CT.CTFunction(cto, [CT.isNumber], CT.trueCT);
+      const CTCTOR = ctf.wrap(CTOR);
+      const o1 = new CTCTOR(1);
+      return o1.x;
+   },
+   /blaming: pos/,
+   "prototype.3"
+);
+
 
 /*---------------------------------------------------------------------*/
 /*    CTRec                                                            */
