@@ -1073,6 +1073,90 @@ assert.throws(
    "prototype.3"
 );
 
+/*---------------------------------------------------------------------*/
+/*    CTInstance                                                       */
+/*---------------------------------------------------------------------*/
+
+assert.ok(
+  (() => {
+    class C {}
+    const tree = CT.CTInstance("C",{},{},C,undefined);
+    const o = tree.wrap(new C());
+    return true;
+  })(),
+  "ctinstance.1"
+);
+assert.ok(
+  (() => {
+    class C {f; constructor() {this.f = 1;} }
+    const tree = CT.CTInstance("C",{f : CT.isNumber},{},C,undefined);
+    const o = tree.wrap(new C()).f;
+    return true;
+  })(),
+  "ctinstance.2"
+);
+assert.throws(
+  () => {
+    class C {f; constructor() {this.f = "a string";} }
+    const tree = CT.CTInstance("C",{f : CT.isNumber},{},C,undefined);
+    const o = tree.wrap(new C()).f;
+  },
+  /blaming: pos/,
+  "ctinstance.3"
+);
+assert.ok(
+  (() => {
+    class C {m(x) { return 1 };}
+    const mctc = CT.CTFunction(CT.CTRec(() => C_CTC),[CT.isNumber],CT.isNumber);
+    const C_CTC = CT.CTInstance("C", {}, {m : mctc}, C, undefined);
+    const o = C_CTC.wrap(new C()).m(1);
+    return true;
+  })(),
+  "ctinstance.4"
+);
+assert.throws(
+  () => {
+    class C {m(x) { return 1 };}
+    const mctc = CT.CTFunction(CT.CTRec(() => C_CTC),[CT.isNumber],CT.isNumber);
+    const C_CTC = CT.CTInstance("C", {}, {m : mctc}, C, undefined);
+    const o = C_CTC.wrap(new C()).m("a string");
+  },
+  /blaming: neg/,
+  "ctinstance.5"
+);
+assert.throws(
+  () => {
+    class C {f; constructor() {this.f = "a string";} }
+    class D extends C {g; constructor() {super(); this.g = "a string";} }
+    const CTC1 = CT.CTInstance("C",{f : CT.isNumber},{},C,undefined);
+    const CTC2 = CT.CTInstance("C",{g : CT.isNumber},{},D,CTC1);
+    const o = CTC2.wrap(new D()).f;
+  },
+  /blaming: pos/,
+  "ctinstance.6"
+);
+assert.throws(
+  () => {
+    class C { constructor() {} }
+    class D extends C {g; constructor() {super(); this.g = 1;} }
+    const CTC1 = CT.CTInstance("C",{f : CT.isNumber},{},C,undefined);
+    const CTC2 = CT.CTInstance("C",{g : CT.isNumber},{},D,CTC1);
+    const o = CTC2.wrap(new D());
+  },
+  /blaming: pos/,
+  "ctinstance.7"
+);
+assert.throws(
+  () => {
+    class C { f; constructor() { this.f = 1; } }
+    class D extends C { constructor() {super(); } }
+    const CTC1 = CT.CTInstance("C",{f : CT.isNumber},{},C,undefined);
+    const CTC2 = CT.CTInstance("C",{g : CT.isNumber},{},D,CTC1);
+    const o = CTC2.wrap(new D());
+  },
+  /blaming: pos/,
+  "ctinstance.8"
+);
 
 /*---------------------------------------------------------------------*/
 /*    CTRec                                                            */

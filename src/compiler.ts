@@ -709,9 +709,12 @@ const tokenMap: Record<string, TokenHandler> = {
     const types = getClassPropTypes(body, el);
     const prototypes = getClassMetTypes(body, el);
     const ctor = <t.ClassMethod>body.find(el => el.type === "TSDeclareMethod" && el.kind === "constructor");
-    
     classDeclarations.set(name, el);
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> a0ba4bb (clean up CTInstance and use new CTRec only on references)
     return [
       // the class
       {
@@ -924,6 +927,13 @@ const getContractName = (name: string): string =>
 
 export const ORIGINAL_MODULE_FILE = "./__ORIGINAL_UNTYPED_MODULE__.js";
 
+function generateSuperClassTableDeclaration() : t.Statement[] {
+    return [
+	template.statement(`const ScottyCTInstanceTable = new Map();`)({}),
+	template.statement(`function addToTable(clazz, ctc) { ScottyCTInstanceTable.set(clazz,ctc); return ctc }`)({})
+    ];
+}
+
 const requireContractLibrary = (): t.Statement[] => [
   template.statement(`var CT = require('./__REPLACE_ME__.js')`)({
     CT: t.identifier("CT"),
@@ -973,12 +983,12 @@ const makeCtExpression = (name: string): t.Expression =>
 type FlatContractMap = Record<string, (type?: any) => t.Expression>;
 
 const wrapRecursive = (expr: t.Expression): t.Expression =>
-  template.expression(`CT.CTRec(() => %%contract%%)`)({
+  template.expression(`%%contract%%`)({
     contract: expr,
   });
 
 const nameReference = (refName: string): t.Expression => {
-  return template.expression(`%%name%%`)({
+  return template.expression(`CT.CTRec(() => %%name%%)`)({
     name: getContractName(refName),
   });
 };
@@ -988,7 +998,7 @@ const nodejsReference = (refName: string): t.Expression => {
 };
 
 const classReference = (refName: string): t.Expression => {
-  return template.expression(`%%name%%`)({
+  return template.expression(`CT.CTRec(() => %%name%%)`)({
     name: classContractTypeName(refName) + "Contract",
   });
 };
@@ -1235,14 +1245,18 @@ const makeReduceNode = (env: ContractGraph) => {
   };
 
   const getObjectTemplate = (stx: ObjectSyntax) => {
-    if (stx.prototypes) {
-       return `CT.CTInstance({ ${Object.keys(stx.types)
-                                  .map((key) => `${key}: %%${key}%%`)
-                                  .join(", ")} },
-                             { ${Object.keys(stx.prototypes)
-                                  .map((key) => `${key}: %%${key}%%`)
-                                  .join(", ")} },
-                             (originalModule.${stx.clazz} || originalModule))`;
+    if (stx.prototypes && stx.clazz) {
+       return `addToTable(
+                originalModule.${stx.clazz},
+                CT.CTInstance("${stx.clazz}",
+                              { ${Object.keys(stx.types)
+                                   .map((key) => `${key}: %%${key}%%`)
+                                   .join(", ")} },
+                              { ${Object.keys(stx.prototypes)
+                                   .map((key) => `${key}: %%${key}%%`)
+                                   .join(", ")} },
+                              originalModule.${stx.clazz} || originalModule,
+                              ScottyCTInstanceTable.get(originalModule.${stx.clazz}.__proto__)))`;
     } else {
        return `CT.CTRec(() => CT.CTObject({ ${Object.keys(stx.types)
                 .map((key) => `${key}: %%${key}%%`)
@@ -1352,6 +1366,7 @@ const getContractAst = (graph: ContractGraph): t.File => {
   const ast = parse("");
   const statements = markGraphNodes(graph) as ContractNode[];
   ast.program.body = [
+    ...generateSuperClassTableDeclaration(),
     ...requireContractLibrary(),
     ...compileTypes(statements, graph),
     ...exportContracts(statements),

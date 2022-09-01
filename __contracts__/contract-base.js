@@ -34,11 +34,15 @@ class ContractError extends TypeError {}
 /*    CT                                                               */
 /*---------------------------------------------------------------------*/
 class CT {
+  cache;
+  name;
+  firstOrder;
+  wrapper;
   constructor(name, firstOrder, wrapper) {
     this.cache = {};
     this.name = name;
     this.firstOrder = firstOrder;
-    if (wrapper.length != 1)
+    if (wrapper.length !== 1)
       throw new ContractError(
         " CT's wrapper argument should accept only one argument: " + wrapper
       );
@@ -51,6 +55,16 @@ class CT {
     );
     return tval.ctor(value);
   }
+}
+
+class CTFromCTInstance extends CT {
+    methods;
+    fields;
+    constructor(name, firstOrder, wrapper, methods, fields) {
+        super(name, firstOrder, wrapper);
+        this.methods=methods;
+        this.fields=fields;
+    }
 }
 
 /*---------------------------------------------------------------------*/
@@ -599,7 +613,7 @@ function topsort(orig_domain) {
   }
 
   const unmarked = domain.slice();
-  while (unmarked.length != 0 && !cycle) {
+  while (unmarked.length !== 0 && !cycle) {
     if (unmarked[0].permanent_mark) {
       unmarked.shift();
     } else {
@@ -1002,6 +1016,7 @@ function CTObject(ctfields, ctprotofields = {}) {
       }
       function makeHandler(priv) {
         return {
+            // TODO: what should happen with deletions here?
           get: function (target, prop) {
             const ct =
               ei[prop] ||
@@ -1064,78 +1079,60 @@ function CTObject(ctfields, ctprotofields = {}) {
 
 /*---------------------------------------------------------------------*/
 /*    CTInstance ...                                                   */
+/*                                                                     */
+/*  This combinator checks the constraints that are imposed by an      */
+/*  an object being an instance of the class `clazz`                   */
 /*---------------------------------------------------------------------*/
-function CTInstance(ctfields, ctprotofields, clazz) {
-  let stringIndexContract = false,
-    numberIndexContract = false;
-  let fields = {};
 
-  if (!clazz) {
-    throw new ContractError("Illegal class");
+// className : string
+// _ctfields : {"field" : uncoerced-contract, ...}
+// _ctfields : {"method" : uncoerced-contract, ...}
+// clazz : the actual class
+// super_ctinstance : CT | undefined
+function CTInstance(className, _fields, _methods, clazz, super_ctinstance) {
+  //NB: this flattens the field and methods from the super class into
+  // `fields_and_methods`, which is an O(n^2) operation; it would be better
+  // to chain these together but it isn't clear how to do that and preserve
+  // the correct blame_object so we punt for now.
+  let fields_and_methods = super_ctinstance === undefined ? 
+     {} :
+     Object.assign({},super_ctinstance.fields_and_methods);
+
+  for (let k in _fields) {
+    const p = _fields[k];
+    fields_and_methods[k] = CTCoerce(p,k + "@CTInstance");
+  }
+  for (let k in _methods) {
+    const p = _methods[k];
+    fields_and_methods[k] = CTCoerce(p,k + "@CTInstance");
   }
 
-  for (let k in ctfields) {
-    const p = ctfields[k];
-
-    if ("contract" in p) {
-      if (p.index === "string") {
-        stringIndexContract = CTCoerce(p.contract, k + "@CTObject");
-      } else if (p.index === "number") {
-        numberIndexContract = CTCoerce(p.contract, k + "@CTObject");
-      } else {
-        fields[k] = {
-          contract: CTCoerce(p.contract, k + "@CTObject"),
-          optional: p.optional,
-        };
-      }
-    } else {
-      fields[k] = { contract: CTCoerce(p, k + "@CTObject") };
+    function firstOrder(x) {
+        if (!x instanceof clazz) {
+            return false;
+        }
+        for (let n in _fields) {
+            if (!x.hasOwnProperty(n)) {
+                return false;
+            }
+        }
+        return (super_ctinstance===undefined) || super_ctinstance.firstOrder(x);
     }
-  }
 
-  // wrap all the clazz properties
-  for (let k in ctprotofields) {
-    clazz.prototype[k] = ctprotofields[k].wrap(clazz.prototype[k]);
-  }
-  
-  function firstOrder(x) {
-    if (x instanceof clazz) {
-      for (let n in fields) {
-        if (!(n in x) 
- 	   && !fields[n].optional 
- 	   && !fields[n].prototype) {
- 	  return false;
-	}
-      }
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  return new CT("CTObject", firstOrder, function (blame_object) {
+  function wrapper(blame_object) {
     function mkWrapper(swap) {
       const kt = swap ? "f" : "t"
       const kf = swap ? "t" : "f"
       const ei = {};
-      const eis =
-        stringIndexContract && stringIndexContract.wrapper(blame_object);
-      const ein =
-        numberIndexContract && numberIndexContract.wrapper(blame_object);
 
-      for (let k in fields) {
-        const ctc = fields[k].contract;
-
-        ei[k] = ctc.wrapper(blame_object);
+      for (let k in fields_and_methods) {
+        ei[k] = fields_and_methods[k].wrapper(blame_object);
       }
       function makeHandler(priv) {
         return {
+            // TODO: don't allow deleting fields from instances
           get: function (target, prop) {
-            const ct =
-              ei[prop] ||
-              (typeof prop === "string" && eis) ||
-              (typeof prop === "number" && ein);
-
+            const ct = ei[prop];
             const cache = priv[prop];
 
             if (ct) {
@@ -1143,15 +1140,17 @@ function CTInstance(ctfields, ctprotofields, clazz) {
                 return cache;
               } else {
                 const targetProp = target[prop];
-                  if ((fields[prop] && fields[prop].optional) && targetProp === undefined) {
-                  return targetProp;
-                }
                 const cv = ct[kt].ctor(targetProp);
                 priv[prop] = cv;
                 return cv;
               }
             } else {
-              return target[prop];
+              return signal_contract_violation(
+                  target,
+	          swap,
+                  blame_object,
+                  `cannot access ${toString(prop)} in class instance`
+              )[prop];
             }
           },
           set: function (target, prop, newval) {
@@ -1161,7 +1160,13 @@ function CTInstance(ctfields, ctprotofields, clazz) {
               priv[prop] = false;
               target[prop] = ct[kf].ctor(newval);
             } else {
-              target[prop] = newval;
+                signal_contract_violation(
+                    target,
+	            swap,
+                    blame_object,
+                    `cannot set ${toString(prop)} in class instance`
+                );
+                target[prop] = newval;
             }
             return true;
           },
@@ -1172,12 +1177,11 @@ function CTInstance(ctfields, ctprotofields, clazz) {
         if (firstOrder(value)) {
           return new Proxy(value, makeHandler({}));
         } else {
-          // TODO: this error message is not always accurate
           return signal_contract_violation(
             value,
 	    swap,
             blame_object,
-            `Object mismatch, expecting "${toString(fields)}", got "${toString(value)}"`
+            `Object mismatch, expecting object matching class ${className}, got "${toString(value)}"`
           );
         }
       });
@@ -1187,7 +1191,9 @@ function CTInstance(ctfields, ctprotofields, clazz) {
       t: mkWrapper(false),
       f: mkWrapper(true),
     };
-  });
+  }
+
+  return new CTFromCTInstance("CTInstance", firstOrder, wrapper, fields_and_methods);
 }
 
 /*---------------------------------------------------------------------*/
@@ -1284,7 +1290,7 @@ blame_object =
                      (listof blame_object))  -- our siblings in the or/and
     neg_state: same as pos_state
   }
-// INVARIANT: (dead != false) <=> ((pos_state != false) or (neg_state != false))
+// INVARIANT: (dead !== false) <=> ((pos_state !== false) or (neg_state !== false))
 */
 
 function new_blame_object(pos, neg) {
