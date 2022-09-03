@@ -17,6 +17,10 @@ function classContractTypeName(name: string): string {
    return name + "$Class";
 }
 
+function instanceContractTypeName(name: string): string {
+   return name + "$Instance";
+}
+
 interface CompilerInput {
   code: string;
   language: ParserPlugin;
@@ -389,7 +393,7 @@ function ctorTypeAnnotation(el: any): t.TSTypeAnnotation {
    } else {
       return {
      	 type: "TSTypeAnnotation",
-     	 typeAnnotation: typeReference(classContractTypeName(el.id.name)),
+     	 typeAnnotation: typeReference(instanceContractTypeName(el.id.name)),
      	 leadingComments: null,
      	 innerComments: null,
      	 trailingComments: null,
@@ -402,7 +406,7 @@ function ctorTypeAnnotation(el: any): t.TSTypeAnnotation {
 
 const coerceClassMethod = (el: t.ClassMethod, parent: any): TSMethodType => ({
   type: "TSFunctionType",
-  self: (el.kind !== "constructor" ? typeReference(classContractTypeName(parent.id.name)) : null),
+  self: (el.kind !== "constructor" ? typeReference(instanceContractTypeName(parent.id.name)) : null),
   typeAnnotation: (el.kind === "constructor" 
      ? ctorTypeAnnotation(parent)
      : (el.returnType?.type === "TSTypeAnnotation"
@@ -705,20 +709,17 @@ const tokenMap: Record<string, TokenHandler> = {
   ClassDeclaration(el: t.ClassDeclaration) {
     const name = el.id.name;
     const className = classContractTypeName(name);
+    const instanceName = instanceContractTypeName(name);
     const {body} = el.body;
     const types = getClassPropTypes(body, el);
     const prototypes = getClassMetTypes(body, el);
     const ctor = <t.ClassMethod>body.find(el => el.type === "TSDeclareMethod" && el.kind === "constructor");
     classDeclarations.set(name, el);
-<<<<<<< HEAD
-    
-=======
-
->>>>>>> a0ba4bb (clean up CTInstance and use new CTRec only on references)
+    console.error("NAME=", el.id.name, " CNAME=", className);
     return [
       // the class
       {
-        name: className,
+        name: instanceName,
         typeToMark: null,
         type: {
            hint: "object",
@@ -735,7 +736,7 @@ const tokenMap: Record<string, TokenHandler> = {
         type: {
           hint: "class",
           syntax: {
-             self: typeReference(className),
+             self: typeReference(instanceName),
              domain: ctor ? getParameterTypes(ctor.params) : implicitCtorTypes(),
           }
         },
@@ -930,7 +931,7 @@ export const ORIGINAL_MODULE_FILE = "./__ORIGINAL_UNTYPED_MODULE__.js";
 function generateSuperClassTableDeclaration() : t.Statement[] {
     return [
 	template.statement(`const ScottyCTInstanceTable = new Map();`)({}),
-	template.statement(`function addToTable(clazz, ctc) { ScottyCTInstanceTable.set(clazz,ctc); return ctc }`)({})
+	template.statement(`ScottyCTInstanceTable.add = function(clazz, ctc) { ScottyCTInstanceTable.set(clazz,ctc); return ctc }`)({})
     ];
 }
 
@@ -999,7 +1000,7 @@ const nodejsReference = (refName: string): t.Expression => {
 
 const classReference = (refName: string): t.Expression => {
   return template.expression(`CT.CTRec(() => %%name%%)`)({
-    name: classContractTypeName(refName) + "Contract",
+    name: instanceContractTypeName(refName) + "Contract",
   });
 };
 
@@ -1246,7 +1247,7 @@ const makeReduceNode = (env: ContractGraph) => {
 
   const getObjectTemplate = (stx: ObjectSyntax) => {
     if (stx.prototypes && stx.clazz) {
-       return `addToTable(
+       return `ScottyCTInstanceTable.add(
                 originalModule.${stx.clazz},
                 CT.CTInstance("${stx.clazz}",
                               { ${Object.keys(stx.types)
@@ -1366,8 +1367,8 @@ const getContractAst = (graph: ContractGraph): t.File => {
   const ast = parse("");
   const statements = markGraphNodes(graph) as ContractNode[];
   ast.program.body = [
-    ...generateSuperClassTableDeclaration(),
     ...requireContractLibrary(),
+    ...generateSuperClassTableDeclaration(),
     ...compileTypes(statements, graph),
     ...exportContracts(statements),
   ];

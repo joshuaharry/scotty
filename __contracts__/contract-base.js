@@ -1,10 +1,10 @@
 // -*-hopjs-parse-indent: 2 -*-
 /*=====================================================================*/
-/*    .../project/jscontract/scotty/__contracts__/contract-base.js     */
+/*    /tmp/TBR/scotty/__contracts__/contract-base.js                   */
 /*    -------------------------------------------------------------    */
 /*    Author      :  manuel serrano                                    */
 /*    Creation    :  Tue Feb 18 17:19:39 2020                          */
-/*    Last change :  Fri Aug  5 09:25:26 2022 (serrano)                */
+/*    Last change :  Sat Sep  3 14:31:24 2022 (serrano)                */
 /*    Copyright   :  2020-22 manuel serrano                            */
 /*    -------------------------------------------------------------    */
 /*    Basic contract implementation                                    */
@@ -58,12 +58,10 @@ class CT {
 }
 
 class CTFromCTInstance extends CT {
-    methods;
-    fields;
-    constructor(name, firstOrder, wrapper, methods, fields) {
+    fields_and_methods;
+    constructor(name, firstOrder, wrapper, fields_and_methods) {
         super(name, firstOrder, wrapper);
-        this.methods=methods;
-        this.fields=fields;
+        this.fields_and_methods = fields_and_methods;
     }
 }
 
@@ -304,10 +302,12 @@ function CTFunctionOrClass(self, domain, range, mode) {
         construct: function(target, args) {
           if (args.length === arity)
             switch (args.length) {
-              case 0:
+              case 0: {
+	      const nt = new target();
                 return si_wrapper.ctor(
-                  new target()
+                  nt
                 );
+		}
               case 1:
                 return si_wrapper.ctor(
                   new target(di0_wrapper.ctor(args[0]))
@@ -844,7 +844,7 @@ function CTOr(...args)  {
 		    }
                 };
                 return new CTWrapper(function (value) {
-                    if (! or_first_order(value) ) {
+                    if (!or_first_order(value) ) {
                         signal_contract_violation(
                             value,
 			    swap,
@@ -1135,6 +1135,7 @@ function CTInstance(className, _fields, _methods, clazz, super_ctinstance) {
             const ct = ei[prop];
             const cache = priv[prop];
 
+	    console.log("GET ", typeof target, prop, "@" + className);
             if (ct) {
               if (cache) {
                 return cache;
@@ -1145,11 +1146,12 @@ function CTInstance(className, _fields, _methods, clazz, super_ctinstance) {
                 return cv;
               }
             } else {
+  console.log("CTI FAIL ", className, fields_and_methods);
               return signal_contract_violation(
                   target,
 	          swap,
                   blame_object,
-                  `cannot access ${toString(prop)} in class instance`
+		  `cannot access "${toString(prop)}" in "${className}" instance`
               )[prop];
             }
           },
@@ -1193,6 +1195,8 @@ function CTInstance(className, _fields, _methods, clazz, super_ctinstance) {
     };
   }
 
+  console.log("CTI ", className, fields_and_methods);
+  
   return new CTFromCTInstance("CTInstance", firstOrder, wrapper, fields_and_methods);
 }
 
