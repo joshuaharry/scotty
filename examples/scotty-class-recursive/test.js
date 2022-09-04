@@ -6,7 +6,6 @@ function test() {
    const o = new num.OddNat(z);
    const t = new num.EvenNat(o);
 
-   console.log("t instanceof num.EvenNat", t instanceof num.EvenNat);
    console.log("t.toNum() =", t.toNum()); // printf t.toNum() = 2
 
    try {

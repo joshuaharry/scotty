@@ -15,8 +15,8 @@ class EvenNat extends Num {
     }
     
     toNum() {
-	return this.pred.toNum() + 1;
-    }
+      return this.pred.toNum() + 1;
+   }
 }
 
 class OddNat extends Num {

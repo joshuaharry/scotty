@@ -715,7 +715,6 @@ const tokenMap: Record<string, TokenHandler> = {
     const prototypes = getClassMetTypes(body, el);
     const ctor = <t.ClassMethod>body.find(el => el.type === "TSDeclareMethod" && el.kind === "constructor");
     classDeclarations.set(name, el);
-    console.error("NAME=", el.id.name, " CNAME=", className);
     return [
       // the class
       {

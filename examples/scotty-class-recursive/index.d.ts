@@ -14,5 +14,5 @@ export class EvenNat extends Num {
 
 export class OddNat extends Num {
  pred: EvenNat | Zero;
- constructor(pred: EvenNat);
+ constructor(pred: EvenNat | Zero);
 }
