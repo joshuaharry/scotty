@@ -1605,7 +1605,7 @@ assert.throws(
     const ctf = c3.wrap(f);
     ctf();
   },
-  /Wrong argument count[^]*Wrong argument count/,
+  /Wrong argument number[^]*Wrong argument number/,
   "ctand.8"
 );
 
