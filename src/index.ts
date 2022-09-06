@@ -115,6 +115,7 @@ const compileAndSwap = (mode: Mode) => {
   replaceLinter(mainDirectory, "eslint");
   replaceLinter(mainDirectory, "jest");
   replaceLinter(mainDirectory, "jshint");
+  replaceLinter(mainDirectory, "jslint");
   replaceLinter(mainDirectory, "semistandard");
   replaceLinter(mainDirectory, "standard");
   replaceLinter(mainDirectory, "xo");
