@@ -4,7 +4,7 @@
 /*    -------------------------------------------------------------    */
 /*    Author      :  manuel serrano                                    */
 /*    Creation    :  Tue Feb 18 17:19:39 2020                          */
-/*    Last change :  Sun Sep  4 01:53:50 2022 (serrano)                */
+/*    Last change :  Mon Sep  5 23:45:07 2022 (serrano)                */
 /*    Copyright   :  2020-22 manuel serrano                            */
 /*    -------------------------------------------------------------    */
 /*    Basic contract implementation                                    */
@@ -146,6 +146,10 @@ function predToString(pred) {
     return "isEvent";
   } else if (pred === isBuffer) {
     return "isBuffer";
+  } else if (pred === isDate) {
+    return "isDate";
+  } else if (pred === isFunction) {
+    return "isFunction";
   } else {
     return pred.toString();
   }
@@ -1448,6 +1452,9 @@ function isEvent(o) {
 function isBuffer(o) {
   return o instanceof Buffer;
 }
+function isDate(o) {
+  return o instanceof Date;
+}
 function True(o) {
   return true;
 }
@@ -1488,6 +1495,8 @@ const errorCT = new CTFlat(isError);
 const eventCT = new CTFlat(isEvent);
 const nullCT = new CTFlat(isNull);
 const bufferCT = new CTFlat(isBuffer);
+const dateCT = new CTFlat(isDate);
+const functionCT = new CTFlat(isFunction);
 const StringCT = new CTFlat(isStringC);
 const NumberCT = new CTFlat(isNumberC);
 const BooleanCT = new CTFlat(isBooleanC);
@@ -1565,6 +1574,8 @@ exports.numberCT = numberCT;
 exports.arrayBufferCT = arrayBufferCT;
 exports.nullCT = nullCT;
 exports.bufferCT = bufferCT;
+exports.dateCT = dateCT;
+exports.functionCT = functionCT;
 exports.StringCT = StringCT;
 exports.NumberCT = NumberCT;
 exports.BooleanCT = BooleanCT;
@@ -1593,6 +1604,7 @@ exports.isFunction = isFunction;
 exports.isString = isString;
 exports.isBoolean = isBoolean;
 exports.isNumber = isNumber;
+exports.isDate = isDate;
 exports.True = True;
 
 exports.nodejsCT = function(name) {

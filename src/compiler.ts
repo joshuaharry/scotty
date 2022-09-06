@@ -1103,6 +1103,12 @@ const makeReduceNode = (env: ContractGraph) => {
     Buffer(_) {
       return makeCtExpression("CT.bufferCT");
     },
+    Date(_) {
+      return makeCtExpression("CT.dateCT");
+    },
+    Function(_) {
+      return makeCtExpression("CT.functionCT");
+    },
   };
 
   const flatContractMap: FlatContractMap = {
@@ -1256,7 +1262,7 @@ const makeReduceNode = (env: ContractGraph) => {
                                    .map((key) => `${key}: %%${key}%%`)
                                    .join(", ")} },
                               originalModule.${stx.clazz} || originalModule,
-                              ScottyCTInstanceTable.get(originalModule.${stx.clazz}.__proto__)))`;
+                              ScottyCTInstanceTable.get((originalModule.${stx.clazz} || originalModule).__proto__)))`;
     } else {
        return `CT.CTRec(() => CT.CTObject({ ${Object.keys(stx.types)
                 .map((key) => `${key}: %%${key}%%`)
