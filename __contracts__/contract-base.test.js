@@ -1158,6 +1158,238 @@ assert.throws(
   "ctinstance.8"
 );
 
+assert.ok(
+    (() => {
+
+	class Num {}
+	
+	class Zero extends Num {
+            toNum() {
+    		return 0;
+            }
+	}
+	
+	class EvenNat extends Num {
+            pred;
+            
+            constructor(pred) {
+    		super();
+    		this.pred = pred;
+            }
+            
+            toNum() {
+		return this.pred.toNum() + 1;
+	    }
+	}
+	
+	class OddNat extends Num {
+            pred;
+            
+            constructor(pred) {
+    		super();
+    		this.pred = pred;
+            }
+            
+            toNum() {
+    		return this.pred.toNum() + 1;
+            }
+	}
+	
+	var Num$InstanceContract =
+	    CT.CTInstance(
+		"Num",
+		{},
+		{
+		    toNum: CT.CTFunction(
+			CT.CTRec(() => Num$InstanceContract),
+			[],
+			CT.numberCT
+		    ),
+		},
+		Num,
+		undefined
+	    );
+	
+	
+	var Num$ClassContract = CT.CTClass(
+	    CT.CTRec(() => Num$InstanceContract),
+	    []
+	);
+	var Zero$InstanceContract = CT.anyCT;
+	var Zero$ClassContract = CT.CTClass(
+	    CT.CTRec(() => Zero$InstanceContract),
+	    []
+	);
+	var EvenNat$InstanceContract =
+	    CT.CTInstance(
+		"EvenNat",
+		{
+		    pred: CT.CTRec(() => OddNat$InstanceContract),
+		},
+		{},
+		EvenNat,
+		Num$InstanceContract
+	    );
+
+	var EvenNat$ClassContract = CT.CTClass(
+	    CT.CTRec(() => EvenNat$InstanceContract),
+	    [CT.CTRec(() => OddNat$InstanceContract)]
+	);
+	var OddNat$InstanceContract = 
+	    CT.CTInstance(
+		"OddNat",
+		{
+		    pred: CT.CTOr(
+			CT.CTRec(() => EvenNat$InstanceContract),
+			CT.CTRec(() => Zero$InstanceContract)
+		    ),
+		},
+		{},
+		OddNat,
+		Num$InstanceContract
+	    );
+
+	var OddNat$ClassContract = CT.CTClass(
+	    CT.CTRec(() => OddNat$InstanceContract),
+	    [
+		CT.CTOr(
+		    CT.CTRec(() => EvenNat$InstanceContract),
+		    CT.CTRec(() => Zero$InstanceContract)
+		),
+	    ]
+	);
+	var num_Zero = Zero$ClassContract.wrap(Zero);
+	var num_EvenNat = EvenNat$ClassContract.wrap(EvenNat);
+	var num_OddNat = OddNat$ClassContract.wrap(OddNat);
+
+	const z = new num_Zero();
+	const o = new num_OddNat(z);
+	const t = new num_EvenNat(o);
+
+	t.toNum()
+
+
+	return true;
+    })(),
+  "ctinstance.9"
+);
+
+assert.throws(
+  () => {
+	class Num {}
+	
+	class Zero extends Num {
+            toNum() {
+    		return 0;
+            }
+	}
+	
+	class EvenNat extends Num {
+            pred;
+            
+            constructor(pred) {
+    		super();
+    		this.pred = pred;
+            }
+            
+            toNum() {
+		return this.pred.toNum() + 1;
+	    }
+	}
+	
+	class OddNat extends Num {
+            pred;
+            
+            constructor(pred) {
+    		super();
+    		this.pred = pred;
+            }
+            
+            toNum() {
+    		return this.pred.toNum() + 1;
+            }
+	}
+	
+	var Num$InstanceContract =
+	    CT.CTInstance(
+		"Num",
+		{},
+		{
+		    toNum: CT.CTFunction(
+			CT.CTRec(() => Num$InstanceContract),
+			[],
+			CT.numberCT
+		    ),
+		},
+		Num,
+		undefined
+	    );
+	
+	
+	var Num$ClassContract = CT.CTClass(
+	    CT.CTRec(() => Num$InstanceContract),
+	    []
+	);
+	var Zero$InstanceContract = CT.anyCT;
+	var Zero$ClassContract = CT.CTClass(
+	    CT.CTRec(() => Zero$InstanceContract),
+	    []
+	);
+	var EvenNat$InstanceContract =
+	    CT.CTInstance(
+		"EvenNat",
+		{
+		    pred: CT.CTRec(() => OddNat$InstanceContract),
+		},
+		{},
+		EvenNat,
+		Num$InstanceContract
+	    );
+
+	var EvenNat$ClassContract = CT.CTClass(
+	    CT.CTRec(() => EvenNat$InstanceContract),
+	    [CT.CTRec(() => OddNat$InstanceContract)]
+	);
+	var OddNat$InstanceContract = 
+	    CT.CTInstance(
+		"OddNat",
+		{
+		    pred: CT.CTOr(
+			CT.CTRec(() => EvenNat$InstanceContract),
+			CT.CTRec(() => Zero$InstanceContract)
+		    ),
+		},
+		{},
+		OddNat,
+		Num$InstanceContract
+	    );
+
+	var OddNat$ClassContract = CT.CTClass(
+	    CT.CTRec(() => OddNat$InstanceContract),
+	    [
+		CT.CTOr(
+		    CT.CTRec(() => EvenNat$InstanceContract),
+		    CT.CTRec(() => Zero$InstanceContract)
+		),
+	    ]
+	);
+	var num_Zero = Zero$ClassContract.wrap(Zero);
+	var num_EvenNat = EvenNat$ClassContract.wrap(EvenNat);
+	var num_OddNat = OddNat$ClassContract.wrap(OddNat);
+
+	const z = new num_Zero();
+	const o = new num_OddNat(z);
+	const t = new num_EvenNat(o);
+
+        new num_EvenNat(z)
+
+
+	return true;
+    },
+  /blaming: neg/,
+  "ctinstance.10"
+)
+
 /*---------------------------------------------------------------------*/
 /*    CTClass                                                          */
 /*---------------------------------------------------------------------*/
@@ -1605,7 +1837,7 @@ assert.throws(
     const ctf = c3.wrap(f);
     ctf();
   },
-  /Wrong argument count[^]*Wrong argument count/,
+  /Wrong argument number[^]*Wrong argument number/,
   "ctand.8"
 );
 

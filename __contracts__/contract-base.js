@@ -1149,6 +1149,10 @@ function CTInstance(className, _fields, _methods, clazz, super_ctinstance) {
                 return cv;
               }
             } else if (prop in target) {
+	      // ctinstance.9 tests to make this branch
+	      // is here; the branch is conservative as it may
+              // not catch some errors, but it seems like
+              // a reasonably practical choice, for now. (Sept 3 2022)
 	      return target[prop];
 	    } else {
 	      return signal_contract_violation(
@@ -1166,6 +1170,7 @@ function CTInstance(className, _fields, _methods, clazz, super_ctinstance) {
               priv[prop] = false;
               target[prop] = ct[kf].ctor(newval);
 	    } else if (prop in target) {
+                // cf comment dated Sept 3 2022 in the get: method
 		return target[prop] = newval;
             } else {
                 signal_contract_violation(
