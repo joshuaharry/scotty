@@ -19,13 +19,15 @@ const help = (exitCode: number) => {
 
 usage: scotty [command]
 
+
 command:
-  help                Display this help message and exit.
-  validate            Validate that scotty can function correctly on the current machine.
-  identity-mode       Compile types to contracts in identity mode.
-  proxy-mode          Compile types to contracts in proxy mode.
-  full-mode           Compile types to contracts in full mode.
-  compile-only        Compile types to stdout.
+  help                               Display this help message and exit.
+  validate                           Validate that scotty can function correctly on the current machine.
+  identity-mode                      Compile types to contracts in identity mode.
+  proxy-mode                         Compile types to contracts in proxy mode.
+  full-mode                          Compile types to contracts in full mode.
+  compile-only                       Compile types to stdout.
+  compile-file TYPE.d.ts CONTRACT.js Compile types in FILE to stdout.
 `);
   process.exit(exitCode);
 };
@@ -72,17 +74,19 @@ const validate = () => {
   }
 };
 
-const replaceImport = (code: string, mode: Mode): string => {
-  const replaceString = "./__REPLACE_ME__.js";
+const replaceImportString = "./__REPLACE_ME__.js";
+const replaceOriginalString = "__ORIGINAL_UNTYPED_MODULE__.js";
+
+function replaceImport(code: string, mode: Mode, contractpath?: string): string {
   switch (mode) {
     case "identity-mode": {
-      return code.replace(replaceString, "./contract-identity-mode.js");
+      return code.replace(replaceImportString, "./contract-identity-mode.js");
     }
     case "proxy-mode": {
-      return code.replace(replaceString, "./contract-proxy-mode.js");
+      return code.replace(replaceImportString, "./contract-proxy-mode.js");
     }
     case "full-mode": {
-      return code.replace(replaceString, "./contract-base.js");
+      return code.replace(replaceImportString, "./contract-base.js");
     }
   }
 };
@@ -150,10 +154,21 @@ function compileOnly() {
   }
   const typePath = path.join(DT_PATH, "types", packageName, "index.d.ts");
   if (!existsSync(typePath)) {
-    console.error(`*** SCOTTY-FATAL-ERROR: Could not types for ${packageName}`);
+    console.error(`*** SCOTTY-FATAL-ERROR: Could not find types for ${packageName}`);
     process.exit(1);
   }
   const code = replaceImport(compileContracts(), "full-mode");
+  writeSync(process.stdout.fd, code);
+};
+
+function compileFile(fileName: string, contractpath: string) {
+  if (!existsSync(fileName)) {
+    console.error(`*** SCOTTY-FATAL-ERROR: Could not find file ${fileName}`);
+    process.exit(1);
+  }
+   const code = compileContracts({ fileName, language: "typescript"})
+      .replace(replaceImportString, contractpath)
+      .replace(replaceOriginalString, fileName.replace(/d.ts/, "js"));
   writeSync(process.stdout.fd, code);
 };
 
@@ -175,6 +190,12 @@ const parseArgv = (argv: string[]) => {
     }
     case "compile-only":
       return compileOnly();
+    case "compile-file":
+      if (argv.length < 3) {
+         return help(1);
+      } else {
+         return compileFile(argv[1], argv[2]);
+      }
     default: {
       console.error("*** SCOTTY-FATAL-ERROR: Could not recognize command.\n");
       return help(1);
