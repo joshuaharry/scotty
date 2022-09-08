@@ -87,8 +87,25 @@ const replaceImport = (code: string, mode: Mode): string => {
   }
 };
 
+function replaceLinter(mainDirectory : string, linter : string) {
+    const toReplace = path.join(
+	mainDirectory,
+	"node_modules",
+	".bin",
+	linter
+    );
+    console.log("replaceLinter " + linter + " [" + toReplace + "]");
+    if (!existsSync(toReplace)) return;
+    unlinkSync(toReplace);
+    writeFileSync(toReplace,
+		  "#!/bin/sh\necho ignore " + linter + "\n",
+		  { mode : "755" });
+    console.log("replaceLinter done", toReplace);
+}
+
 const compileAndSwap = (mode: Mode) => {
-  const mainPath = require.resolve(process.cwd());
+  const pkgDirectory = process.cwd();
+  const mainPath = require.resolve(pkgDirectory);
   const seps = ORIGINAL_DIRECTORY.split(path.sep)
   const packageName = seps[seps.length - 1];
   const mainDirectory = path.dirname(mainPath);
@@ -112,30 +129,15 @@ const compileAndSwap = (mode: Mode) => {
   }
   writeFileSync(mainPath, code);
   copySync(CONTRACTS_PATH, mainDirectory, { recursive: true });
-  replaceLinter(mainDirectory, "eslint");
-  replaceLinter(mainDirectory, "jest");
-  replaceLinter(mainDirectory, "jshint");
-  replaceLinter(mainDirectory, "jslint");
-  replaceLinter(mainDirectory, "semistandard");
-  replaceLinter(mainDirectory, "standard");
-  replaceLinter(mainDirectory, "xo");
-};
 
-function replaceLinter(mainDirectory : string, linter : string) {
-    console.log("replaceLinter " + linter);
-    const toReplace = path.join(
-	mainDirectory,
-	"node_modules",
-	".bin",
-	linter
-    );
-    if (!existsSync(toReplace)) return;
-    unlinkSync(toReplace);
-    writeFileSync(toReplace,
-		  "#!/bin/sh\necho ignore " + linter + "\n",
-		  { mode : "755" });
-    console.log("replaceLinter done", toReplace);
-}
+  replaceLinter(pkgDirectory, "eslint");
+  replaceLinter(pkgDirectory, "jest");
+  replaceLinter(pkgDirectory, "jshint");
+  replaceLinter(pkgDirectory, "jslint");
+  replaceLinter(pkgDirectory, "semistandard");
+  replaceLinter(pkgDirectory, "standard");
+  replaceLinter(pkgDirectory, "xo");
+};
 
 function compileOnly() {
   const mainPath = require.resolve(process.cwd());
