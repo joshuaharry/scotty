@@ -1077,6 +1077,15 @@ assert.throws(
 /*    CTInstance                                                       */
 /*---------------------------------------------------------------------*/
 
+assert.throws(
+  () => {
+    class C {}
+    const ctc = CT.CTInstance("C",{},{},C,undefined);
+    const o = ctc.wrap(undefined);
+  },
+  /blaming: pos/,
+  "ctinstance.0"
+);
 assert.ok(
   (() => {
     class C {}

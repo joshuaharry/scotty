@@ -1112,7 +1112,7 @@ function CTInstance(className, _fields, _methods, clazz, super_ctinstance) {
   }
 
     function firstOrder(x) {
-        if (!x instanceof clazz) {
+        if (!(x instanceof clazz)) {
             return false;
         }
         for (let n in _fields) {
