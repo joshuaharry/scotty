@@ -1167,6 +1167,50 @@ assert.throws(
   "ctinstance.8"
 );
 
+assert.ok((() => {
+    class C {
+        cache;
+        constructor() {
+            this.cache=false;
+        }
+        get_value() {
+            if (!this.cache) this.cache=this.compute_value();
+            return this.cache;
+        };
+        compute_value() { return 1; };
+    }
+    class D extends C {
+        a_field = 1;
+        compute_value() {
+            return this.a_field;
+        }
+    }
+    const C_ctc = CT.CTInstance(
+        "C",
+        {},
+        {
+            get_value : CT.CTFunction(CT.CTRec(() => C_ctc),[],CT.isNumber),
+            compute_value : CT.CTFunction(CT.CTRec(() => C_ctc),[],CT.isNumber)
+        },
+        C, undefined
+    );
+    const D_ctc = CT.CTInstance(
+        "D",
+        {
+            a_field : CT.isNumber
+        }, {
+            compute_value : CT.CTFunction(CT.CTRec(() => D_ctc),[],CT.isNumber)
+        },
+        D,
+        C_ctc);
+    const o = D_ctc.wrap(new D())
+    o.get_value();
+    return o.get_value() == 1;
+})(),
+	  "ctinstance.9"
+	 );
+
+
 assert.ok(
     (() => {
 
@@ -1280,7 +1324,7 @@ assert.ok(
 
 	return true;
     })(),
-  "ctinstance.9"
+  "ctinstance.10"
 );
 
 assert.throws(
