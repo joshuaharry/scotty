@@ -1405,6 +1405,14 @@ assert.throws(
 
 assert.throws(
   () => {
+    CT.CTClass(true, [CT.isString], CT.isNumber).wrap(undefined);
+  },
+  /SCOTTY-CONTRACT-VIOLATION: CTClass/,
+  "ctfunction.correct-name-in-error-message"
+);
+
+assert.throws(
+  () => {
     function f(x) {
       return 123;
     }

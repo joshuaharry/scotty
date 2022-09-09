@@ -168,6 +168,7 @@ function fixArity(f) {
 function CTFunctionOrClass(self, domain, range, mode) {
   const arity = domain.length;
   let minarity = arity, maxarity = arity;
+  const combinatorName = mode == "function" ? "CTFunction" : "CTClass";
 
   if (!(domain instanceof Array)) {
     throw new ContractError("Illegal domain: " + domain);
@@ -179,17 +180,17 @@ function CTFunctionOrClass(self, domain, range, mode) {
       if (p.dotdotdot) maxarity = Number.MIN_SAFE_INTEGER;
 
       return {
-        contract: CTCoerce(p.contract, "CTFunction, argument " + (index + 1)),
+        contract: CTCoerce(p.contract, combinatorName + ", argument " + (index + 1)),
         dotdotdot: p.dotdotdot,
         optional: p.optional,
       };
     } else {
-      return { contract: CTCoerce(p, "CTFunction, argument " + (index + 1)) };
+      return { contract: CTCoerce(p, combinatorName + ", argument " + (index + 1)) };
     }
   });
 
-  const coerced_si = CTCoerce(self, "CTFunction, self argument");
-  const coerced_ri = CTCoerce(range, "CTFunction, range");
+  const coerced_si = CTCoerce(self, combinatorName + ", self argument");
+  const coerced_ri = CTCoerce(range, combinatorName + ", range");
 
   function map2fix(args, domain, key) {
     let len = args.length;
@@ -235,7 +236,7 @@ function CTFunctionOrClass(self, domain, range, mode) {
     return typeof x === "function";
   }
 
-  return new CT("CTFunction", firstOrder, function (blame_object) {
+  return new CT(combinatorName, firstOrder, function (blame_object) {
     function mkWrapper(swap) {
       const sik =  swap ? "f" : "t"
       const rik =  swap ? "f" : "t"
@@ -356,7 +357,7 @@ function CTFunctionOrClass(self, domain, range, mode) {
             value,
             swap,
             blame_object,
-            "CTFunction: Not a function `" + toStr(value) + "': "
+            combinatorName + ": Not a function `" + toStr(value) + "': "
           );
         }
       });
