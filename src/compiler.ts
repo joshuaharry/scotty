@@ -635,6 +635,7 @@ const tokenMap: Record<string, TokenHandler> = {
     return tokens.map((token) => ({...token, name: `${name}.${token.name}`}));
   },
   TSInterfaceDeclaration(el: t.TSInterfaceDeclaration) {
+    if (el.extends) console.log("Warning:", el.id.name, "has extension");
     const name = el.id.name;
     const {body} = el.body;
     const types = getObjectPropTypes(body);
