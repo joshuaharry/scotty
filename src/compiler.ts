@@ -169,6 +169,10 @@ interface ClassSyntax {
   self: t.TSType;
 }
 
+interface EnumSyntax {
+    self: t.TSEnumDeclaration;
+}
+
 interface ObjectChunk {
   type: t.TSType;
   isOptional: boolean;
@@ -204,10 +208,16 @@ interface ClassTypescriptType {
   syntax: ClassSyntax;
 }
 
+interface EnumTypescriptType {
+    hint: "enum";
+    syntax: EnumSyntax;
+}
+
 type TypescriptType =
   | FlatTypescriptType
   | ObjectTypescriptType
   | FunctionTypescriptType
+  | EnumTypescriptType
   | ClassTypescriptType;
 
 type FlowObjectRecord = Record<string, {type: t.FlowType}>;
@@ -555,6 +565,20 @@ const tokenMap: Record<string, TokenHandler> = {
     // @ts-ignore
     return reduceTokens(el.program.body);
   },
+    TSEnumDeclaration(en: t.TSEnumDeclaration) {
+	const enumstx : EnumSyntax = {
+		  self : en
+	};
+      return [
+	  {
+	      name : en.id.name,
+	      type : { hint : "enum" , syntax: enumstx },
+	      existsInJs: false,
+	      isMainExport: false,
+	      isSubExport: false,
+	      typeToMark: null
+	  }];
+  },
   DeclareModule(el: t.DeclareModule) {
     return reduceTokens(el.body.body);
   },
@@ -834,9 +858,13 @@ const getTypeDependencies = (type: TypescriptType): string[] => {
        return [
          ...syntax.domain.flatMap((stx) => getDeps(stx.type))
        ];
-    }
+   }
+  case "enum": {
+      const syntax = type.syntax as EnumSyntax;
+      return [];
+  }
     default: {
-       const syntax = type.syntax as ObjectSyntax;
+	const syntax = type.syntax as ObjectSyntax;
        return Object.values(syntax.types).flatMap((type) => getDeps(type.type));
     }
    }
@@ -1328,10 +1356,19 @@ const makeReduceNode = (env: ContractGraph) => {
     return stx.isRecursive ? wrapRecursive(objectContract) : objectContract;
   };
 
+    const mapEnum = (stx : EnumSyntax) => {
+	console.log(stx);
+	return template.expression(`CT.CTOr(%%types%%)`)({
+            types: [makeCtExpression("CT.numberCT")] //union.types.map(mapFlat),
+	});
+//	throw new Error("mapEnum");
+    }
+
   const mapType = (type: TypescriptType): t.Expression => {
     if (type.hint === "flat") return mapFlat(type.syntax);
     if (type.hint === "function") return mapFunction(type.syntax);
     if (type.hint === "class") return mapClass(type.syntax);
+    if (type.hint === "enum") return mapEnum(type.syntax);
     return mapObject(type.syntax);
   };
 
