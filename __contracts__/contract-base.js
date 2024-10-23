@@ -1595,6 +1595,7 @@ exports.CTObject = CTObject;
 exports.CTInstance = CTInstance;
 exports.CTInterface = CTObject;
 exports.CTOr = CTOr;
+exports.CTOrExplicitChoice = CTOrExplicitChoice;
 exports.CTAnd = CTAnd;
 exports.CTRec = CTRec;
 exports.CTFunction = CTFunction;

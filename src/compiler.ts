@@ -980,7 +980,7 @@ const makeCtExpression = (name: string): t.Expression =>
   template.expression(name)({CT: t.identifier("CT")});
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type FlatContractMap = Record<string, (type?: any) => t.Expression>;
+type FlatContractMap = Record<string, (type?: any) => t.Expression | undefined>;
 
 const wrapRecursive = (expr: t.Expression): t.Expression =>
   template.expression(`%%contract%%`)({
@@ -1040,12 +1040,7 @@ const makeReduceNode = (env: ContractGraph) => {
   ): t.Expression => {
     const params = extractRefParams(ref);
     return template.expression(expr)({
-      contract:
-        params.length === 1
-          ? mapFlat(params[0])
-          : template.expression(`CT.CTOr(%%ors%%)`)({
-            ors: params.map((param) => mapFlat(param)),
-          }),
+      contract: buildOr(params)
     });
   };
 
@@ -1073,6 +1068,11 @@ const makeReduceNode = (env: ContractGraph) => {
         "CT.CTPromise(CT.CTFunction(true, [%%contract%%], CT.anyCT))"
       );
     },
+    Function(_) {
+      return makeCtExpression("CT.functionCT");
+    },
+  }
+  const flatTypeRefMap: Record<string, (ref: t.TSTypeReference) => t.Expression> = {
     String(_) {
       return makeCtExpression("CT.StringCT");
     },
@@ -1106,11 +1106,11 @@ const makeReduceNode = (env: ContractGraph) => {
     Date(_) {
       return makeCtExpression("CT.dateCT");
     },
-    Function(_) {
-      return makeCtExpression("CT.functionCT");
-    },
   };
 
+  // all of the contracts returned from code in this map need to have
+  // a completely accurate firstOrder method as it will be used with
+  // CTOrExplicitChoice
   const flatContractMap: FlatContractMap = {
     TSNumberKeyword() {
       return makeCtExpression("CT.numberCT");
@@ -1127,6 +1127,38 @@ const makeReduceNode = (env: ContractGraph) => {
     TSVoidKeyword() {
       return makeCtExpression("CT.undefinedCT");
     },
+    TSTypeLiteral(type: t.TSTypeLiteral) {
+      if (isLiteralObject(type))
+        return mapObject({
+          isRecursive: false,
+          types: makeObjectLiteral(type),
+        });
+      return makeAnyCt();
+    },
+    NumberTypeAnnotation(_: t.NumberTypeAnnotation) {
+      return makeCtExpression("CT.numberCT");
+    },
+    BooleanTypeAnnotation(_: t.BooleanTypeAnnotation) {
+      return makeCtExpression("CT.booleanCT");
+    },
+    StringTypeAnnotation(_: t.StringTypeAnnotation) {
+      return makeCtExpression("CT.stringCT");
+    },
+    TSTypeReference(ref: t.TSTypeReference) {
+      if (ref?.typeName?.type !== "Identifier") {
+        return undefined;
+      }
+      const {name} = ref.typeName;
+      const refFn = flatTypeRefMap[name];
+      if (refFn) return refFn(ref);
+      return undefined;
+    },
+    TSParenthesizedType(paren: t.TSParenthesizedType) {
+      return mapOnlyFlat(paren.typeAnnotation);
+    },
+  };
+
+  const flowContractMap: FlatContractMap = {
     TSArrayType(arr: t.TSArrayType) {
       return template.expression(`CT.CTArray(%%contract%%)`)({
         contract: mapFlat(arr.elementType),
@@ -1148,9 +1180,7 @@ const makeReduceNode = (env: ContractGraph) => {
       return mapFlat(paren.typeAnnotation);
     },
     TSUnionType(union: t.TSUnionType) {
-      return template.expression(`CT.CTOr(%%types%%)`)({
-        types: union.types.map(mapFlat),
-      });
+      return buildOr(union.types);
     },
     TSFunctionType(type: t.TSFunctionType) {
       return mapFunction({
@@ -1165,40 +1195,71 @@ const makeReduceNode = (env: ContractGraph) => {
       base.arguments.push(template.expression(`{ immutable: true }`)({}));
       return base;
     },
-    TSTypeLiteral(type: t.TSTypeLiteral) {
-      if (isLiteralObject(type))
-        return mapObject({
-          isRecursive: false,
-          types: makeObjectLiteral(type),
-        });
-      return makeAnyCt();
-    },
   };
 
-  const flowContractMap: FlatContractMap = {
-    NumberTypeAnnotation(_: t.NumberTypeAnnotation) {
-      return makeCtExpression("CT.numberCT");
-    },
-    BooleanTypeAnnotation(_: t.BooleanTypeAnnotation) {
-      return makeCtExpression("CT.booleanCT");
-    },
-    StringTypeAnnotation(_: t.StringTypeAnnotation) {
-      return makeCtExpression("CT.stringCT");
-    },
-  };
-
-  const mapFlat = (type: t.TSType | t.FlowType): t.Expression => {
+  const mapOnlyFlat = (type: t.TSType | t.FlowType): t.Expression | undefined => {
     const tsFn = flatContractMap[type.type];
     if (tsFn !== undefined) {
       return tsFn(type);
     }
+    return undefined
+  }
+  
+  const mapFlat = (type: t.TSType | t.FlowType): t.Expression => {
+    const possible = mapOnlyFlat(type);
+    if (possible) return possible;
     const flowFn = flowContractMap[type.type];
     if (flowFn !== undefined) {
-      return flowFn(type);
+      const exp = flowFn(type);
+      if (exp !== undefined)
+        return exp;
     }
     return makeAnyCt(type as t.TSType);
   };
 
+  const isFlat = (type: t.TSType | t.FlowType): boolean => {
+    const tsFn = flatContractMap[type.type];
+    if (tsFn !== undefined) {
+      const exp = tsFn(type);
+      if (exp !== undefined)
+        return true;
+    }
+    return false;
+  };
+
+  const buildOr = (types: (t.TSType | t.FlowType)[]): t.Expression => {
+    var flats : (t.TSType|t.FlowType)[] = [];
+    var nonflats : (t.TSType|t.FlowType)[] = [];
+    var res! : t.Expression;
+    if (types.length == 0) {
+      return makeAnyCt();
+    }
+    for (let i = 0; i < types.length; i++) {
+      (isFlat(types[i])?flats:nonflats).push(types[i]);
+    }
+    if (nonflats.length == 0) {
+      const flat = flats.pop();
+      if (!flat) { throw new Error("non empty array pop returned undefined") }
+      res = mapFlat(flat);
+    } else if (nonflats.length === 1) {
+      res = mapFlat(nonflats[0]);
+    } else {
+      res = template.expression(`CT.CTOr(%%ors%%)`)({
+        ors: nonflats.map(mapFlat)
+      });
+    }
+    while (flats.length > 0) {
+      const flat = flats.pop();
+      if (!flat) { throw new Error("non empty array pop returned undefined") }
+      res = template.expression(
+        `CT.CTOrExplicitChoice(%%new%%.firstOrder,%%new%%,(x) => !(%%new%%.firstOrder(x)),%%inner%%)`)({
+        new: mapFlat(flat),
+        inner: res,
+      });
+    }
+    return res;
+  }
+  
   const makeRestParameter = (rest: t.TSType): t.Expression => {
     if (rest.type !== "TSArrayType") 
       return template.expression(`{ contract: CT.anyCT, dotdotdot: true }`)({CT: t.identifier("CT")});
