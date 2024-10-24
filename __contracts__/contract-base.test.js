@@ -557,18 +557,18 @@ assert.throws(
  * CTOr
  */
 assert.throws(() => {
-  CT.CTOr(CT.isString, CT.isNumber).wrap(undefined);
+  CT.CTOrImplicitChoice(CT.isString, CT.isNumber).wrap(undefined);
 }, "ctor.1");
 assert.ok(
   (() => {
-    CT.CTOr(CT.isString, CT.isNumber).wrap("x");
+    CT.CTOrImplicitChoice(CT.isString, CT.isNumber).wrap("x");
     return true;
   })(),
   "ctor.2"
 );
 assert.ok(
   (() => {
-    CT.CTOr(CT.isString, CT.isNumber).wrap(3);
+    CT.CTOrImplicitChoice(CT.isString, CT.isNumber).wrap(3);
     return true;
   })(),
   "ctor.3"
@@ -578,7 +578,7 @@ assert.ok(
     function f_(x) {
       return "x";
     }
-    const f = CT.CTOr(
+    const f = CT.CTOrImplicitChoice(
       CT.CTFunction(true, [CT.isString], CT.isString),
       CT.isNumber
     ).wrap(f_);
@@ -589,7 +589,7 @@ assert.ok(
 );
 assert.throws(
   () => {
-    const f = CT.CTOr(
+    const f = CT.CTOrImplicitChoice(
       CT.CTFunction(true, [CT.isString], CT.isString),
       CT.isNumber
     ).wrap((x) => 3);
@@ -600,7 +600,7 @@ assert.throws(
 );
 assert.throws(
   () => {
-    const f = CT.CTOr(
+    const f = CT.CTOrImplicitChoice(
       CT.CTFunction(true, [CT.isString], CT.isString),
       CT.isNumber
     ).wrap((x) => "x");
@@ -612,7 +612,7 @@ assert.throws(
 
 assert.throws(
     () => {
-        const f = CT.CTOr(
+        const f = CT.CTOrImplicitChoice(
             CT.CTFunction(true, [CT.isString], CT.isString),
             CT.CTFunction(true, [CT.isNumber], CT.isNumber)
         ).wrap((x) => "x");
@@ -623,7 +623,7 @@ assert.throws(
 )
 assert.ok(
     (() => {
-        const f = CT.CTOr(
+        const f = CT.CTOrImplicitChoice(
             CT.CTFunction(true, [CT.isString], CT.isString),
             CT.CTFunction(true, [CT.isString], CT.isNumber)
         ).wrap((x) => "x");
@@ -633,21 +633,21 @@ assert.ok(
 )
 assert.ok(
   (() => {
-      CT.CTOr(CT.isString, CT.isNumber, CT.isBoolean).wrap("x");
+      CT.CTOrImplicitChoice(CT.isString, CT.isNumber, CT.isBoolean).wrap("x");
     return true;
   })(),
   "ctor.9a"
 );
 assert.ok(
   (() => {
-      CT.CTOr(CT.isString, CT.isNumber, CT.isBoolean).wrap(11);
+      CT.CTOrImplicitChoice(CT.isString, CT.isNumber, CT.isBoolean).wrap(11);
     return true;
   })(),
   "ctor.9b"
 );
 assert.ok(
   (() => {
-      CT.CTOr(CT.isString, CT.isNumber, CT.isBoolean).wrap(true);
+      CT.CTOrImplicitChoice(CT.isString, CT.isNumber, CT.isBoolean).wrap(true);
     return true;
   })(),
   "ctor.9c"
@@ -655,7 +655,7 @@ assert.ok(
 
 assert.throws(
     () => {
-	const CTarr2 = CT.CTOr(CT.CTArray(CT.isString), CT.CTArray(CT.isNumber));
+	const CTarr2 = CT.CTOrImplicitChoice(CT.CTArray(CT.isString), CT.CTArray(CT.isNumber));
 	const a2 = ["1",2];
 	const ct2a2 = CTarr2.wrap(a2);
 	const c2a20 = ct2a2[0];
@@ -667,7 +667,7 @@ assert.throws(
 
 assert.throws(
     () => {
-	const CTarr2 = CT.CTOr(CT.CTArray(CT.isString), CT.CTArray(CT.isNumber));
+	const CTarr2 = CT.CTOrImplicitChoice(CT.CTArray(CT.isString), CT.CTArray(CT.isNumber));
 	const a2 = [];
 	const ct2a2 = CTarr2.wrap(a2);
 	ct2a2[0] = "string";
@@ -677,7 +677,7 @@ assert.throws(
 )
 assert.throws(
     () => {
-	const CTarr2 = CT.CTOr(CT.CTArray(CT.isString), CT.CTArray(CT.isNumber));
+	const CTarr2 = CT.CTOrImplicitChoice(CT.CTArray(CT.isString), CT.CTArray(CT.isNumber));
 	const a2 = [];
 	const ct2a2 = CTarr2.wrap(a2);
 	ct2a2[0] = 1;
@@ -687,37 +687,80 @@ assert.throws(
 )
 
 assert.throws(
-    () => {
-	const orfn = CT.CTOr(CT.CTFunction(true, [CT.isNumber], CT.isNumber),
-			     CT.CTFunction(true, [CT.isNumber], CT.isString))
-	const f = function(x) {
-	    if (x === 0) return "x"
-	    return x
-	}
-	const fc = orfn.wrap(f)
-	fc(0)
-	fc(1)
-    },
-    /blaming: pos/,
-    "ctor.13"
+  () => {
+    const orfn = CT.CTOrImplicitChoice(
+      CT.CTFunction(true, [CT.isNumber], CT.isNumber),
+      CT.CTFunction(true, [CT.isNumber], CT.isString))
+    const f = function(x) {
+      if (x === 0) return "x"
+      return x
+    }
+    const fc = orfn.wrap(f)
+    fc(0)
+    fc(1)
+  },
+  /blaming: pos/,
+  "ctor.13"
 )
 
 
 // check errors happen at the right time
 assert.throws(
   () => {
-    CT.CTOr(not_a_contract, true);
+    CT.CTOrImplicitChoice(not_a_contract, true);
   },
-  /CTOr: not a contract/,
+  /CTOrImplicitChoice: not a contract/,
   "ctor.arg1-check"
 );
 assert.throws(
   () => {
-    CT.CTOr(true, not_a_contract);
+    CT.CTOrImplicitChoice(true, not_a_contract);
   },
-  /CTOr: not a contract/,
+  /CTOrImplicitChoice: not a contract/,
   "ctor.arg2-check"
 );
+
+assert.ok(
+  (() => {
+    CT.CTOr().wrap("x");
+    return true;
+  })(),
+  "ctor.n.1"
+);
+assert.throws(() => {
+  CT.CTOr(CT.isString, CT.isNumber).wrap(undefined);
+}, "ctor.n.2");
+assert.ok(
+  (() => {
+    CT.CTOr(CT.isString, CT.isNumber).wrap("x");
+    return true;
+  })(),
+  "ctor.n.3"
+);
+assert.ok(
+  (() => {
+    CT.CTOr(CT.isString,
+            CT.isNumber,
+            CT.CTFunction(true, [CT.isString], CT.isString)).wrap(
+              "x"
+            );
+    return true;
+  })(),
+  "ctor.n.4"
+);
+assert.ok(
+  (() => {
+    const f =
+    CT.CTOr(CT.isString,
+            CT.isNumber,
+            CT.CTFunction(true, [CT.isString], CT.isString)).wrap(
+              (x) => x + "y"
+            );
+    return (f("x") === "xy")
+  })(),
+  "ctor.n.5"
+);
+
 
 /*---------------------------------------------------------------------*/
 /*    CTObject                                                         */
@@ -768,7 +811,7 @@ assert.throws(
   () => {
     const person = CT.CTObject({
       id: CT.isNumber,
-      prop: { contract: CT.CTOr(CT.isString, CT.isBoolean), index: "string" },
+      prop: { contract: CT.CTOrImplicitChoice(CT.isString, CT.isBoolean), index: "string" },
     });
     const o = person.wrap({ id: 23, name: "foo", firstname: "bar", alive: 23 });
     return o.id === 23 && o.name === "foo" && o.alive;

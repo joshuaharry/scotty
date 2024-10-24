@@ -38,10 +38,12 @@ class CT {
   name;
   firstOrder;
   wrapper;
+  flat;
   constructor(name, firstOrder, wrapper) {
     this.cache = {};
     this.name = name;
     this.firstOrder = firstOrder;
+    this.flat = false;
     if (wrapper.length !== 1)
       throw new ContractError(
         " CT's wrapper argument should accept only one argument: " + wrapper
@@ -119,12 +121,14 @@ function CTFlat(pred) {
         }
       });
     }
-    return new CT(pred.toString(), pred, function (blame_object) {
+    let ans = new CT(pred.toString(), pred, function (blame_object) {
       return {
         t: mkWrapper(blame_object, false),
         f: mkWrapper(blame_object, true),
       };
     });
+    ans.flat = true;
+    return ans;
   }
 }
 
@@ -777,7 +781,7 @@ function CTAnd(...args) {
 /*---------------------------------------------------------------------*/
 function CTOrExplicitChoice(lchoose, left, rchoose, right) {
   return new CT(
-    "CTOr",
+    "CTOrExplicitChoice",
     (x) => lchoose(x) || rchoose(x),
     function (blame_object) {
       function mkWrapper(swap) {
@@ -805,8 +809,8 @@ function CTOrExplicitChoice(lchoose, left, rchoose, right) {
   );
 }
 
-function CTOr(...args)  {
-    const argcs = args.map((a) => CTCoerce(a, "CTOr"));
+function CTOrImplicitChoice(...args) {
+    const argcs = args.map((a) => CTCoerce(a, "CTOrImplicitChoice"));
     const or_first_order = (x) => {
         for (let i = 0; i < argcs.length; ++i) {
             if (argcs[i].firstOrder(x)) return true;
@@ -814,7 +818,7 @@ function CTOr(...args)  {
         return false;
     }
     return new CT(
-        "CTOr",
+        "CTOrImplicitChoice",
         or_first_order,
         function (blame_object) {
             function mkWrapper(swap) {
@@ -868,6 +872,32 @@ function CTOr(...args)  {
             };
         }
     );
+}
+
+function CTOr(...args)  {
+  const argcs = args.map((a) => CTCoerce(a, "CTOr"));
+  if (argcs.length == 0) return trueCT;
+  var flats = [];
+  var hos = [];
+  for (let i = 0; i < argcs.length; ++i) {
+    const a = argcs[i];
+    (a.flat ? flats : hos).push(a);
+  }
+  var result;
+  if (hos.length == 0) {
+    result = flats.pop();
+  } else {
+    result = CTOrImplicitChoice(...hos);
+  }
+  while (flats.length > 0) {
+    const flat = flats.pop();
+    result = CTOrExplicitChoice(
+      flat.firstOrder,
+      flat,
+      (x) => !flat.firstOrder(x),
+      result);
+  }
+  return result;
 }
 
 /*---------------------------------------------------------------------*/
@@ -1595,6 +1625,8 @@ exports.CTObject = CTObject;
 exports.CTInstance = CTInstance;
 exports.CTInterface = CTObject;
 exports.CTOr = CTOr;
+exports.CTOrImplicitChoice = CTOrImplicitChoice;
+exports.CTOrExplicitChoice = CTOrExplicitChoice;
 exports.CTAnd = CTAnd;
 exports.CTRec = CTRec;
 exports.CTFunction = CTFunction;
