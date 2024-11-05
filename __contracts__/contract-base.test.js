@@ -1486,6 +1486,30 @@ assert.throws(
   "ctinstance.10"
 )
 
+assert.throws(
+  () => {
+    class C { f; constructor() { this.f = 1; } }
+    class D extends C { constructor() {super(); } }
+    const CTC1 = CT.CTInstance("C",{f : CT.isNumber},{},C,undefined);
+    const CTC2 = CT.CTInstance("C",{g : CT.isNumber},{},D,CTC1);
+    const o = CTC2.wrap(new D());
+  },
+  /with own property g/,
+  "ctinstance.11"
+);
+
+assert.throws(
+  () => {
+    class C { f; constructor() { this.f = 1; } }
+    class D extends C { constructor() {super(); } }
+    const CTC1 = CT.CTInstance("C",{f : CT.isNumber},{},C,undefined);
+    const CTC2 = CT.CTInstance("C",{g : CT.isNumber},{},D,CTC1);
+    const o = CTC2.wrap(new C());
+  },
+  /that is an instanceof "class D/,
+  "ctinstance.11"
+);
+
 /*---------------------------------------------------------------------*/
 /*    CTClass                                                          */
 /*---------------------------------------------------------------------*/

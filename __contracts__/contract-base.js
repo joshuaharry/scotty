@@ -1221,11 +1221,24 @@ function CTInstance(className, _fields, _methods, clazz, super_ctinstance) {
         if (firstOrder(value)) {
           return new Proxy(value, makeHandler({}));
         } else {
+          let msg = false;
+          if (!(value instanceof clazz)) {
+            msg = `expecting object that is an instanceof "${clazz}", got ${toString(value)}`
+          } else {
+            for (let n in _fields) {
+              if (!value.hasOwnProperty(n)) {
+                msg = `expected object with own property ${n}`
+              }
+            }
+          }
+          if (! msg) {
+            msg= `expecting object matching super instance ${super_ctinstance}`
+          }
           return signal_contract_violation(
             value,
 	    swap,
             blame_object,
-            `Object mismatch, expecting object matching class ${className}, got "${toString(value)}"`
+            `Object mismatch, ${msg}`
           );
         }
       });
