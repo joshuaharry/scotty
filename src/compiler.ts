@@ -79,7 +79,8 @@ const addIndexSignature = (
 ): ObjectRecord => {
   const {name} = el.parameters[0];
   const type = el.typeAnnotation?.typeAnnotation || t.tsAnyKeyword();
-  return {...acc, [name]: {type, isIndex: true, isOptional: false}};
+  return {...acc, [name]: {type, isIndex: true, isOptional: false,
+                           isGetter: false, isSetter: false}};
 };
 
 const addPropertySignature = (
@@ -91,7 +92,8 @@ const addPropertySignature = (
   if (!type) return acc;
   return {
     ...acc,
-    [el.key.name]: {type, isOptional: Boolean(el.optional), isIndex: false},
+    [el.key.name]: {type, isOptional: Boolean(el.optional), isIndex: false,
+                    isGetter: false, isSetter: false},
   };
 };
 
@@ -173,6 +175,8 @@ interface ObjectChunk {
   type: t.TSType;
   isOptional: boolean;
   isIndex: boolean;
+  isGetter: boolean;
+  isSetter: boolean;
 }
 
 type ObjectRecord = Record<string, ObjectChunk>;
@@ -278,14 +282,17 @@ type ClassChild =
 
 const accumulateType = (
   acc: ObjectRecord,
-  el: t.TSPropertySignature | t.TSMethodSignature | t.ClassProperty | t.ClassMethod,
+  el: t.TSPropertySignature | t.TSMethodSignature | t.ClassProperty | t.ClassMethod | t.TSDeclareMethod,
   type?: t.TSType
 ): ObjectRecord => {
   if (!type || el?.key?.type !== "Identifier") return acc;
   const {name} = el.key;
   return {
     ...acc,
-    [name]: {type, isIndex: false, isOptional: Boolean(el.optional)},
+    [name]: {type, isIndex: false, isOptional: Boolean(el.optional),
+             isGetter: el.type === "TSDeclareMethod" && el.kind === "get",
+             isSetter: el.type === "TSDeclareMethod" && el.kind === "set"
+            }
   };
 };
 
@@ -476,7 +483,7 @@ const getClassMetTypes = (els: ClassChild[], parent: any): ObjectRecord => {
     if (el.type === "TSDeclareMethod") {
        if (el.kind === "constructor") {
           // skip the constructor
-          return acc;
+         return acc;
        } else {
           const fn = childMappers[el.type] || returnObjectRecord;
           return fn(acc, el, parent);
@@ -1303,6 +1310,22 @@ const makeReduceNode = (env: ContractGraph) => {
     };
   };
 
+  const addGetterSetterType = (
+    acc: ObjectContracts,
+    [name, type]: ChunkEntry,
+    isGetter: boolean,
+    isSetter: boolean
+  ): ObjectContracts => {
+    return {
+      ...acc,
+      [name]: template.expression(
+        `{ contract: %%contract%%, getter: ${isGetter}, setter: ${isSetter} }`
+      )({
+        contract: mapFlat(type.type),
+      }),
+    };
+  };
+
   const getObjectContracts = (stx: ObjectSyntax): ObjectContracts => {
     let types = Object.entries(stx.types);
     if (stx.prototypes) {
@@ -1312,6 +1335,8 @@ const makeReduceNode = (env: ContractGraph) => {
       const [name, type] = chunkEntry;
       if (type.isOptional) return addOptionalType(acc, chunkEntry);
       if (type.isIndex) return addIndexType(acc, chunkEntry);
+      if (type.isGetter || type.isSetter)
+        return addGetterSetterType(acc, chunkEntry, type.isGetter, type.isSetter);
       return {...acc, [name]: mapFlat(type.type)};
     }, {});
   };
