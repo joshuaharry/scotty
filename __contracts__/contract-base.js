@@ -1135,11 +1135,25 @@ function CTInstance(className, _fields, _methods, clazz, super_ctinstance) {
 
   for (let k in _fields) {
     const p = _fields[k];
-    fields_and_methods[k] = CTCoerce(p,k + "@CTInstance");
+    fields_and_methods[k] = {
+      contract: CTCoerce(p, k + "@CTInstance"),
+      getter: false,
+      setter: false };
   }
+
   for (let k in _methods) {
     const p = _methods[k];
-    fields_and_methods[k] = CTCoerce(p,k + "@CTInstance");
+    if (typeof p === "object" && "contract" in p) {
+      fields_and_methods[k] = {
+        contract: CTCoerce(p.contract,k + "@CTInstance"),
+        getter: p.getter || false,
+        setter: p.setter || false};
+    } else {
+      fields_and_methods[k] = {
+        contract: CTCoerce(p,k + "@CTInstance"),
+        getter: false,
+        setter: false};
+    }
   }
 
     function firstOrder(x) {
@@ -1147,9 +1161,19 @@ function CTInstance(className, _fields, _methods, clazz, super_ctinstance) {
             return false;
         }
         for (let n in _fields) {
-            if (!x.hasOwnProperty(n)) {
-                return false;
+          if (fields_and_methods[n].getter || fields_and_methods[n].setter) {
+            const desc = Object.getOwnPropertyDescriptor(x.__proto__,n);
+            if (fields_and_methods[n].getter) {
+              if (!desc.get) return false
             }
+            if (fields_and_methods[n].setter) {
+              if (!desc.set) return false;
+            }
+          } else {
+            if (!x.hasOwnProperty(n)) {
+              return false;
+            }
+          }
         }
         return (super_ctinstance===undefined) || super_ctinstance.firstOrder(x);
     }
@@ -1161,7 +1185,7 @@ function CTInstance(className, _fields, _methods, clazz, super_ctinstance) {
       const ei = {};
 
       for (let k in fields_and_methods) {
-        ei[k] = fields_and_methods[k].wrapper(blame_object);
+        ei[k] = fields_and_methods[k].contract.wrapper(blame_object);
       }
       function makeHandler(priv) {
         return {
@@ -1226,8 +1250,22 @@ function CTInstance(className, _fields, _methods, clazz, super_ctinstance) {
             msg = `expecting object that is an instanceof "${clazz}", got ${toString(value)}`
           } else {
             for (let n in _fields) {
-              if (!value.hasOwnProperty(n)) {
-                msg = `expected object with own property ${n}`
+              if (!fields_and_methods[n].getter && !fields_and_methods[n].setter) {
+                if (!value.hasOwnProperty(n)) {
+                  msg = `expected object with own property ${n}`
+                }
+              } else {
+                const desc = Object.getOwnPropertyDescriptor(o.__proto__,n);
+                if (fields_and_methods[n].setter) {
+                  if (! desc.set) {
+                    msg = `expected object with setter for ${n}`
+                  }
+                  if (fields_and_methods[n].getter) {
+                  if (!desc.get) {
+                    msg = `expected object with getter for ${n}`
+                  }
+                }
+                }
               }
             }
           }

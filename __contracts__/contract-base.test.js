@@ -1367,7 +1367,7 @@ assert.ok(
 
 	return true;
     })(),
-  "ctinstance.10"
+  "ctinstance.10a"
 );
 
 assert.throws(
@@ -1483,7 +1483,7 @@ assert.throws(
 	return true;
     },
   /blaming: neg/,
-  "ctinstance.10"
+  "ctinstance.10b"
 )
 
 assert.throws(
@@ -1495,7 +1495,7 @@ assert.throws(
     const o = CTC2.wrap(new D());
   },
   /with own property g/,
-  "ctinstance.11"
+  "ctinstance.11a"
 );
 
 assert.throws(
@@ -1507,7 +1507,76 @@ assert.throws(
     const o = CTC2.wrap(new C());
   },
   /that is an instanceof "class D/,
-  "ctinstance.11"
+  "ctinstance.11b"
+);
+
+assert.throws(
+  () => {
+    class C { f; constructor() { this.f = "one"; } }
+    const CTC1 = CT.CTInstance(
+      "C",
+      {},
+      {f : { contract : CT.CTFunction(CT.anyCT,[],CT.isNumber)} },
+      C);
+    const o = CTC1.wrap(new C()).f;
+  },
+  /blaming: pos/,
+  "ctinstance.12"
+);
+
+assert.ok(
+  (() => {
+    class C {
+      get f1() { return 5; }
+      set f2(nv) { }
+    }
+    const ctc = CT.CTInstance(
+      "C",
+      {},
+      {f1 : { contract : CT.isNumber, getter: true },
+       f2 : { contract : CT.isNumber, setter: true }},
+      C);
+    const o = ctc.wrap(new C())
+    o.f2=1;
+    return o.f1 == 5;
+  })(),
+  "ctinstance.13"
+);
+
+assert.throws(
+  () => {
+    class C {
+      get f1() { return "five"; }
+      set f2(nv) { }
+    }
+    const ctc = CT.CTInstance(
+      "C",
+      {},
+      {f1 : { contract : CT.CTFunction(CT.anyCT,[],CT.isNumber), getter: true },
+       f2 : { contract : CT.CTFunction(CT.anyCT,[],CT.isNumber), setter: true }},
+      C);
+    const o = ctc.wrap(new C()).f1
+  },
+  /blaming: pos/,
+  "ctinstance.14"
+);
+
+assert.throws(
+  () => {
+    class C {
+      get f1() { return "five"; }
+      set f2(nv) { }
+    }
+    const ctc = CT.CTInstance(
+      "C",
+      {},
+      {f1 : { contract : CT.isNumber, getter: true },
+       f2 : { contract : CT.isNumber, setter: true }},
+      C);
+    const o = ctc.wrap(new C()).f2="six";
+  },
+  /blaming: neg/,
+  "ctinstance.15"
 );
 
 /*---------------------------------------------------------------------*/
