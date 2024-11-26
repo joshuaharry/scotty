@@ -1516,7 +1516,7 @@ assert.throws(
     const CTC1 = CT.CTInstance(
       "C",
       {},
-      {f : { contract : CT.CTFunction(CT.anyCT,[],CT.isNumber)} },
+      {f : { contract : CT.isNumber }},
       C);
     const o = CTC1.wrap(new C()).f;
   },
